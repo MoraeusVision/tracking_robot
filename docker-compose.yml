@@ -1,0 +1,19 @@
+services:
+  robot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tracking_robot:latest
+
+    runtime: nvidia
+    gpus: all
+    network_mode: host
+    privileged: true
+
+    volumes:
+      - ./:/workspace
+
+    working_dir: /workspace
+
+    restart: unless-stopped
+    command: bash

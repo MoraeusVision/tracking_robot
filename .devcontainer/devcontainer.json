@@ -1,0 +1,25 @@
+{
+	"name": "tracking_robot-jetson",
+	"build": {
+		"context": "..",
+		"dockerfile": "../Dockerfile"
+	},
+	"workspaceFolder": "/workspace",
+	"runArgs": [
+		"--runtime=nvidia",
+		"--network=host",
+		"--privileged"
+	],
+	"containerEnv": {
+		"NVIDIA_VISIBLE_DEVICES": "all",
+		"NVIDIA_DRIVER_CAPABILITIES": "all"
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python",
+				"ms-python.vscode-pylance"
+			]
+		}
+	}
+}

@@ -2,15 +2,17 @@ import cv2
 import argparse
 import logging
 import supervision as sv
+import torchvision.transforms as T
 import torch
+from PIL import Image
 
 from typing import List, Any, Optional
 from utils import get_device, parse_video_source
-from inferencing import TRTInference
+from inferencing import TRTInference, visualize_detections
 from pipeline import CVPipeline
 
 SOURCE = 0 #"examples/example1.mp4"
-OUTPUT_PATH = "output/output.mp4"
+OUTPUT_PATH = "output/output.jpg"
 ENGINE_PATH = "models/model.trt"
 
 
@@ -31,7 +33,7 @@ class RobotApp():
         self.trt_model = TRTInference(self.engine, device=self.device)
 
         self.pipeline = CVPipeline(
-            source=self.source,  # använd den parsade källan
+            source=self.source,
             on_frame=self.infer,
             on_prediction=self.on_prediction
         )
@@ -45,7 +47,48 @@ class RobotApp():
 
 
     def infer(self, frame):
+        # BGR -> RGB + numpy -> PIL
+        #image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        #image_pil = Image.fromarray(image)
+        image_pil = Image.open("examples/bear.jpeg").convert('RGB')
+        w, h = image_pil.size
+
+        transforms = T.Compose([
+            T.Resize((640, 640)),
+            T.ToTensor(),
+        ])
+
+        image_tensor = transforms(image_pil).unsqueeze(0).to(self.device)
+        orig_size_tensor = torch.tensor([[w, h]], dtype=torch.int64, device=self.device)
+
+        blob = {
+            'images': image_tensor,
+            'orig_target_sizes': orig_size_tensor
+        }
+
+        output_gpu = self.trt_model(blob)
+        torch.cuda.synchronize()
+
+        output_labels = output_gpu['labels'][0]
+        output_boxes = output_gpu['boxes'][0]
+        output_scores = output_gpu['scores'][0]
+
+        print(f"labels: {output_labels}")
+        print(f"boxes: {output_boxes}")
+        print(f"scores: {output_scores}")
+
+        result_image = visualize_detections(
+            image_pil, 
+            output_boxes, 
+            output_scores, 
+            output_labels, 
+            threshold=0.1
+        )
         
+        result_image.save(self.output_path)
+        
+
+
         return {"dummy": True}
 
     def on_prediction(self, frame, prediction):

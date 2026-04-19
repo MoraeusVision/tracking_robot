@@ -2,6 +2,7 @@ import time
 import numpy as np
 import torch
 import tensorrt as trt
+import cv2
 from collections import OrderedDict
 from PIL import Image, ImageDraw, ImageFont
 
@@ -103,6 +104,7 @@ class TRTInference(object):
         self.context.execute_v2(bindings=list(self.binding_addrs.values()))
         
         return {name: self.gpu_buffers[name] for name in self.output_names}
+    
 
 # --- Visualization Utility Function ---
 COCO_CLASSES = [
@@ -169,3 +171,4 @@ def visualize_detections(image_pil, boxes, scores, labels, class_names=COCO_CLAS
         
     print(f"   - Found {count} objects above threshold {threshold}.")
     return img_draw
+

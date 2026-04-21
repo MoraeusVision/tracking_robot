@@ -98,4 +98,7 @@ class CVPipeline:
             if self.process.is_alive():
                 self.process.terminate()
                 self.process.join(timeout=2)
-        cv2.destroyAllWindows()
+        try:
+            cv2.destroyAllWindows()
+        except Exception:
+            pass

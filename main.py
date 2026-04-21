@@ -1,212 +1,84 @@
 import argparse
 import os
-import sys
-
-import cv2
-import numpy as np
-import tensorrt as trt
-import torch
-
-WORKSPACE_ROOT = os.path.dirname(os.path.abspath(__file__))
-YOLOX_ROOT = os.path.join(WORKSPACE_ROOT, "YOLOX")
-
-if YOLOX_ROOT not in sys.path:
-    sys.path.insert(0, YOLOX_ROOT)
-
-from YOLOX.tools.demo import Predictor
-from utils import parse_video_source
+from dataclasses import dataclass
+from ultralytics import YOLO
 from pipeline import CVPipeline
-from yolox.data.data_augment import ValTransform
-from yolox.data.datasets import COCO_CLASSES
-from yolox.utils import postprocess
+
 
 SOURCE = 0 #"examples/example1.mp4"
-OUTPUT_PATH = "output/output.jpg"
-ENGINE_PATH = "models/model_trt.engine"
+OUTPUT_PATH = "output/output.mp4"
+ENGINE_PATH = "models/yolo26n.engine"
+PT_PATH = "models/yolo26n.pt"
 
+@dataclass
+class Person:
+    id: int
+    bbox: tuple[float, float, float, float]
 
-class EnginePredictor:
-    def __init__(self, engine_path, cls_names=COCO_CLASSES, device="gpu", fp16=False, legacy=False):
-        if device != "gpu":
-            raise ValueError("TensorRT engine inference requires device='gpu'.")
-        if not os.path.exists(engine_path):
-            raise FileNotFoundError(f"TensorRT engine not found: {engine_path}")
-
-        self.engine_path = engine_path
-        self.cls_names = cls_names
-        self.device = device
-        self.fp16 = fp16
-        self.preproc = ValTransform(legacy=legacy)
-        self.logger = trt.Logger(trt.Logger.WARNING)
-        self.runtime = trt.Runtime(self.logger)
-
-        with open(engine_path, "rb") as engine_file:
-            self.engine = self.runtime.deserialize_cuda_engine(engine_file.read())
-
-        if self.engine is None:
-            raise RuntimeError(f"Failed to deserialize TensorRT engine: {engine_path}")
-
-        self.context = self.engine.create_execution_context()
-        self.input_name, self.output_name = self._get_io_names()
-        self.input_shape = tuple(self.engine.get_tensor_shape(self.input_name))
-        self.output_shape = tuple(self.engine.get_tensor_shape(self.output_name))
-        self.test_size = (int(self.input_shape[2]), int(self.input_shape[3]))
-        self.num_classes = int(self.output_shape[2] - 5)
-        self.confthre = 0.3
-        self.nmsthre = 0.3
-        self._allocate_buffers()
-
-    def _get_io_names(self):
-        input_name = None
-        output_name = None
-
-        for index in range(self.engine.num_io_tensors):
-            tensor_name = self.engine.get_tensor_name(index)
-            tensor_mode = self.engine.get_tensor_mode(tensor_name)
-            if tensor_mode == trt.TensorIOMode.INPUT:
-                input_name = tensor_name
-            elif tensor_mode == trt.TensorIOMode.OUTPUT:
-                output_name = tensor_name
-
-        if input_name is None or output_name is None:
-            raise RuntimeError("TensorRT engine must expose exactly one input and one output tensor.")
-
-        return input_name, output_name
-
-    def _allocate_buffers(self):
-        input_dtype = self._torch_dtype(self.engine.get_tensor_dtype(self.input_name))
-        output_dtype = self._torch_dtype(self.engine.get_tensor_dtype(self.output_name))
-        self.input_tensor = torch.empty(self.input_shape, dtype=input_dtype, device="cuda")
-        self.output_tensor = torch.empty(self.output_shape, dtype=output_dtype, device="cuda")
-
-    @staticmethod
-    def _torch_dtype(dtype):
-        dtype_map = {
-            trt.DataType.FLOAT: torch.float32,
-            trt.DataType.HALF: torch.float16,
-            trt.DataType.INT32: torch.int32,
-            trt.DataType.INT8: torch.int8,
-            trt.DataType.BOOL: torch.bool,
-        }
-        if dtype not in dtype_map:
-            raise TypeError(f"Unsupported TensorRT dtype: {dtype}")
-        return dtype_map[dtype]
-
-    def inference(self, img):
-        img_info = {"id": 0}
-        if isinstance(img, str):
-            img_info["file_name"] = os.path.basename(img)
-            img = cv2.imread(img)
+class PersonDetector():
+    def __init__(self, engine_path, pt_path):
+        if os.path.exists(engine_path):
+            self.model = YOLO(engine_path)
         else:
-            img_info["file_name"] = None
-
-        height, width = img.shape[:2]
-        img_info["height"] = height
-        img_info["width"] = width
-        img_info["raw_img"] = img
-
-        ratio = min(self.test_size[0] / img.shape[0], self.test_size[1] / img.shape[1])
-        img_info["ratio"] = ratio
-
-        image, _ = self.preproc(img, None, self.test_size)
-        image = np.ascontiguousarray(image, dtype=np.float32)
-        if self.input_tensor.dtype == torch.float16:
-            image = image.astype(np.float16)
-
-        image_tensor = torch.from_numpy(image).unsqueeze(0).to(device="cuda", non_blocking=True)
-        self.input_tensor.copy_(image_tensor)
-
-        stream = torch.cuda.current_stream().cuda_stream
-        self.context.set_tensor_address(self.input_name, self.input_tensor.data_ptr())
-        self.context.set_tensor_address(self.output_name, self.output_tensor.data_ptr())
-        self.context.execute_async_v3(stream_handle=stream)
-        torch.cuda.current_stream().synchronize()
-
-        outputs = postprocess(
-            self.output_tensor.unsqueeze(0) if self.output_tensor.ndim == 2 else self.output_tensor,
-            self.num_classes,
-            self.confthre,
-            self.nmsthre,
-            class_agnostic=True,
-        )
-        return outputs, img_info
-
-    def visual(self, output, img_info, cls_conf=0.35):
-        return Predictor.visual(self, output, img_info, cls_conf)
-
-
-
-class RobotApp():
-    def __init__(
-        self,
-        source: str,
-        show: bool,
-        save: bool,
-        output_path: str,
-        engine: str,
-        device: str,
-    ):
-        self.source = parse_video_source(str(source))
-        self.show = show
-        self.save = save
-        self.output_path = output_path
-        self.engine = engine
-        self.device = device
-        self.frame_id = 0
-
-        if not torch.cuda.is_available():
-            raise SystemExit("CUDA is not available. This script requires a GPU.")
-
-        self.predictor = self._build_predictor()
-
-        self.pipeline = CVPipeline(
-            source=self.source,
-            on_frame=self.infer,
-            on_prediction=self.on_prediction
-        )
-
-    def _build_predictor(self):
-        return EnginePredictor(
-            engine_path=self.engine,
-            cls_names=COCO_CLASSES,
-            device="gpu",
-        )
-        
-    def cleanup(self):
-        if self.pipeline is not None:
-            try:
-                self.pipeline.stop()
-            except Exception:
-                pass
-
+            model = YOLO(pt_path)
+            model.export(format="engine", half=True)
+            self.model = YOLO(engine_path)
 
     def infer(self, frame):
-        outputs, img_info = self.predictor.inference(frame)
-        print(f"frame: {self.frame_id}, detections: {outputs is not None and outputs[0] is not None}")
-        self.frame_id += 1
-        return outputs, img_info
+        results = self.model.track(frame, persist=True, verbose=False)
+        return results[0]
+
+
+class Robot():
+    def __init__(self, source, engine_path, pt_path):
+        self.source = source
+        self.person_detector = PersonDetector(engine_path, pt_path)
+        self.pipeline = CVPipeline(source, self.on_frame, self.on_prediction)
+        self.persons = []
+    
+    def on_frame(self, frame):
+        person_results = self.person_detector.infer(frame)
+        return person_results
 
     def on_prediction(self, frame, prediction):
-        return None
+        persons = []
+        boxes = prediction.boxes
+        track_ids = boxes.id.int().cpu().tolist() if boxes.id is not None else [None] * len(boxes)
+
+        for i, box in enumerate(boxes):
+            if int(box.cls[0]) != 0:
+                continue
+
+            x1, y1, x2, y2 = box.xyxy[0].tolist()
+            track_id = track_ids[i]
+            if track_id is None:
+                continue
+
+            persons.append(Person(id=int(track_id), bbox=(x1, y1, x2, y2)))
+
+        self.persons = persons
+        print(f"persons: {self.persons}")
 
     def run(self):
         try:
             self.pipeline.run()
         finally:
-            self.cleanup()
-        
+            self.pipeline.stop()
+
+    def cleanup(self):
+        pass
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Detection App")
+    parser = argparse.ArgumentParser(description="Robot App")
 
     parser.add_argument("--source", type=str, default=SOURCE)
     parser.add_argument("--output_path", type=str, default=OUTPUT_PATH)
     parser.add_argument('--engine', type=str, default=ENGINE_PATH, help="Path to the TensorRT engine file.")
+    parser.add_argument('--pt', type=str, default=PT_PATH, help="Path to the PyTorch model file.")
     parser.add_argument("--show", action="store_true", default=False)
     parser.add_argument("--save", action="store_true", default=False)
-    parser.add_argument('--device', type=str, default='cuda:0', help="Device to run inference on.")
-   
+    
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -214,13 +86,10 @@ if __name__ == "__main__":
 
     app = None
     try:
-        app = RobotApp(
+        app = Robot(
             source=args.source,
-            show=args.show,
-            save=args.save,
-            output_path=args.output_path,
-            engine=args.engine,
-            device=args.device
+            engine_path=args.engine,
+            pt_path=args.pt
         )
         app.run()
     finally:

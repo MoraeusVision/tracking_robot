@@ -1,32 +1,19 @@
 import argparse
 import os
-from dataclasses import dataclass
-from ultralytics import YOLO
+
 from pipeline import CVPipeline
+import rclpy
+from rclpy.executors import MultiThreadedExecutor
+from frame_publisher import FramePublisher
 
 
 SOURCE = 0 #"examples/example1.mp4"
 OUTPUT_PATH = "output/output.mp4"
 ENGINE_PATH = "models/yolo26n.engine"
 PT_PATH = "models/yolo26n.pt"
+FRAMES_TO_FORGET = 30
 
-@dataclass
-class Person:
-    id: int
-    bbox: tuple[float, float, float, float]
 
-class PersonDetector():
-    def __init__(self, engine_path, pt_path):
-        if os.path.exists(engine_path):
-            self.model = YOLO(engine_path)
-        else:
-            model = YOLO(pt_path)
-            model.export(format="engine", half=True)
-            self.model = YOLO(engine_path)
-
-    def infer(self, frame):
-        results = self.model.track(frame, persist=True, verbose=False)
-        return results[0]
 
 
 class Robot():
@@ -34,30 +21,34 @@ class Robot():
         self.source = source
         self.person_detector = PersonDetector(engine_path, pt_path)
         self.pipeline = CVPipeline(source, self.on_frame, self.on_prediction)
-        self.persons = []
+        self.persons = {}
+        self.frame_id = 0
     
     def on_frame(self, frame):
         person_results = self.person_detector.infer(frame)
         return person_results
 
     def on_prediction(self, frame, prediction):
-        persons = []
         boxes = prediction.boxes
         track_ids = boxes.id.int().cpu().tolist() if boxes.id is not None else [None] * len(boxes)
+
+        seen_ids = set()
 
         for i, box in enumerate(boxes):
             if int(box.cls[0]) != 0:
                 continue
 
-            x1, y1, x2, y2 = box.xyxy[0].tolist()
             track_id = track_ids[i]
             if track_id is None:
                 continue
 
-            persons.append(Person(id=int(track_id), bbox=(x1, y1, x2, y2)))
+            x1, y1, x2, y2 = box.xyxy[0].tolist()
 
-        self.persons = persons
-        print(f"persons: {self.persons}")
+            person = Person(id=int(track_id), bbox=(x1, y1, x2, y2), last_seen=self.frame_id)
+            self.persons[person.id] = person
+            seen_ids.add(person.id)
+
+        print(self.persons)
 
     def run(self):
         try:
@@ -81,17 +72,19 @@ def parse_args():
     
     return parser.parse_args()
 
-if __name__ == "__main__":
-    args = parse_args()
+def main(args=None):
+    rclpy.init(args=args)
 
-    app = None
-    try:
-        app = Robot(
-            source=args.source,
-            engine_path=args.engine,
-            pt_path=args.pt
-        )
-        app.run()
-    finally:
-        if app is not None:
-            app.cleanup()
+    image_publisher = FramePublisher()
+
+    executor = MultiThreadedExecutor()
+    executor.add_node(image_publisher)
+
+    executor.spin()
+
+    image_publisher.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()

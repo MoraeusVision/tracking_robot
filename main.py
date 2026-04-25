@@ -5,6 +5,7 @@ from pipeline import CVPipeline
 import rclpy
 from rclpy.executors import MultiThreadedExecutor
 from frame_publisher import FramePublisher
+from prediction_publisher import PredictionPublisher
 
 
 SOURCE = 0 #"examples/example1.mp4"
@@ -76,9 +77,11 @@ def main(args=None):
     rclpy.init(args=args)
 
     image_publisher = FramePublisher()
+    prediction_publisher = PredictionPublisher(ENGINE_PATH, PT_PATH)
 
     executor = MultiThreadedExecutor()
     executor.add_node(image_publisher)
+    executor.add_node(prediction_publisher)
 
     executor.spin()
 

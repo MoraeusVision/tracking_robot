@@ -1,4 +1,9 @@
 import os
+import mediapipe as mp
+import cv2
+import math
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 from ultralytics import YOLO
 import rclpy
 from rclpy.node import Node
@@ -20,12 +25,64 @@ class PersonDetector:
     def infer(self, frame):
         results = self.model.track(frame, persist=True, verbose=False)
         return results[0]
+    
+
+class HandDetector:
+    def __init__(self, model_path):
+        base_options = python.BaseOptions(model_asset_path=model_path)
+        options = vision.GestureRecognizerOptions(
+            base_options=base_options,
+            num_hands=2)
+        self.recognizer = vision.GestureRecognizer.create_from_options(options)
+
+    def infer(self, frame):
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        image = mp.Image(
+            image_format=mp.ImageFormat.SRGB,
+            data=rgb_frame
+        )
+        results = self.recognizer.recognize(image)
+        return results
+
+    def parse_hands(self, results, frame):
+        hands = []
+
+        if not results.gestures:
+            return hands
+
+        for i in range(len(results.gestures)):
+            gesture = results.gestures[i][0] if results.gestures[i] else None
+            landmarks = results.hand_landmarks[i] if results.hand_landmarks else None
+
+            if landmarks:
+                cx, cy = self._get_hand_center(landmarks, frame)
+            else:
+                cx, cy = None, None
+
+            hands.append({
+                "gesture": gesture.category_name if gesture else None,
+                "center": [cx, cy]
+            })
+
+        return hands
+    
+    def _get_hand_center(self, hand_landmarks, frame):
+        h, w, _ = frame.shape
+
+        xs = [lm.x for lm in hand_landmarks]
+        ys = [lm.y for lm in hand_landmarks]
+
+        center_x = int((sum(xs) / len(xs)) * w)
+        center_y = int((sum(ys) / len(ys)) * h)
+
+        return center_x, center_y
 
 
 class PredictionPublisher(Node):
-    def __init__(self, engine_path, pt_path):
+    def __init__(self, engine_path, pt_path, mp_path):
         super().__init__("prediction_publisher")
         self.person_detector = PersonDetector(engine_path, pt_path)
+        self.hand_detector = HandDetector(mp_path)
         self.bridge = CvBridge()
 
         self.subscription = self.create_subscription(
@@ -39,8 +96,11 @@ class PredictionPublisher(Node):
 
     def image_callback(self, msg):
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
-        results = self.person_detector.infer(frame)
-        boxes = results.boxes
+        person_results = self.person_detector.infer(frame)
+        hand_results = self.hand_detector.infer(frame)
+        hands = self.hand_detector.parse_hands(hand_results, frame)
+
+        boxes = person_results.boxes
 
         PERSON_CLASS_ID = 0  # COCO
 
@@ -56,7 +116,8 @@ class PredictionPublisher(Node):
 
         payload = {
             "boxes_xyxy": boxes_xyxy,
-            "ids": ids
+            "ids": ids,
+            "hands": hands
         }
 
         out = String()

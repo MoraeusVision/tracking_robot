@@ -31,6 +31,6 @@ COPY . .
 
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
 
-#RUN pip install -r requirements.txt
+RUN pip3 install -r requirements.txt
 
 CMD ["/bin/bash"]

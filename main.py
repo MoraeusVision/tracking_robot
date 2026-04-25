@@ -11,6 +11,7 @@ from prediction_publisher import PredictionPublisher
 SOURCE = 0 #"examples/example1.mp4"
 OUTPUT_PATH = "output/output.mp4"
 ENGINE_PATH = "models/yolo26n.engine"
+MP_PATH = "models/gesture_recognizer.task"
 PT_PATH = "models/yolo26n.pt"
 FRAMES_TO_FORGET = 30
 
@@ -77,7 +78,7 @@ def main(args=None):
     rclpy.init(args=args)
 
     image_publisher = FramePublisher()
-    prediction_publisher = PredictionPublisher(ENGINE_PATH, PT_PATH)
+    prediction_publisher = PredictionPublisher(ENGINE_PATH, PT_PATH, MP_PATH)
 
     executor = MultiThreadedExecutor()
     executor.add_node(image_publisher)

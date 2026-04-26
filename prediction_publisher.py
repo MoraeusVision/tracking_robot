@@ -6,9 +6,8 @@ from mediapipe.tasks.python import vision
 from ultralytics import YOLO
 from rclpy.node import Node
 from sensor_msgs.msg import Image
-from std_msgs.msg import String
 from cv_bridge import CvBridge
-import json
+from robot_msgs.msg import Prediction, Person, Hand, Landmark
 
 
 class PersonDetector:
@@ -22,6 +21,7 @@ class PersonDetector:
             model = YOLO(pt_path)
             model.export(format="engine", half=True)
             self.model = YOLO(engine_path)
+        print("Person detector initialized...")
 
     def infer(self, frame):
         """Run inference on a frame and return the first result object."""
@@ -36,20 +36,22 @@ class PersonDetector:
             return persons
 
         for i in range(len(boxes)):
-            if int(boxes.cls[i]) != 0:  # person class
+            if int(boxes.cls[i]) != 0:
                 continue
 
-            box = boxes.xyxy[i].cpu().tolist()
+            person_msg = Person()
 
+            # ID
             if boxes.id is not None:
-                person_id = int(boxes.id[i])
+                person_msg.id = int(boxes.id[i])
             else:
-                person_id = None
+                person_msg.id = -1
 
-            persons.append({
-                "box_xyxy": box,
-                "id": person_id
-            })
+            # Bounding box
+            box = boxes.xyxy[i].cpu().tolist()
+            person_msg.bbox_xyxy = [float(v) for v in box]
+
+            persons.append(person_msg)
 
         return persons
                     
@@ -60,6 +62,7 @@ class HandDetector:
     def __init__(self, model_path):
         """Initialize the MediaPipe Gesture Recognizer with the given model file."""
         base_options = python.BaseOptions(model_asset_path=model_path)
+        print("Hand detector initialized...")
         options = vision.GestureRecognizerOptions(
             base_options=base_options,
             num_hands=2)
@@ -76,7 +79,7 @@ class HandDetector:
         return results
 
     def parse_hands(self, results, frame):
-        """Convert MediaPipe results to a simple list with gesture and hand center."""
+        """Convert MediaPipe results to a list of Hand messages."""
         hands = []
 
         if not results.gestures:
@@ -89,13 +92,19 @@ class HandDetector:
             if landmarks:
                 cx, cy = self._get_hand_center(landmarks, frame)
             else:
-                cx, cy = None, None
+                cx, cy = 0, 0
 
-            hands.append({
-                "gesture": gesture.category_name if gesture else None,
-                "center": [cx, cy],
-                "landmarks": landmarks
-            })
+            hand_msg = Hand()
+            hand_msg.gesture = gesture.category_name if gesture else ""
+            hand_msg.center = [float(cx), float(cy)]
+            if landmarks:
+                for lm in landmarks:
+                    lm_msg = Landmark()
+                    lm_msg.x = float(lm.x)
+                    lm_msg.y = float(lm.y)
+                    lm_msg.z = float(lm.z)
+                    hand_msg.landmarks.append(lm_msg)
+            hands.append(hand_msg)
 
         return hands
     
@@ -129,7 +138,7 @@ class PredictionPublisher(Node):
             10,
         )
 
-        self.prediction_pub = self.create_publisher(String, "predictions", 10)
+        self.prediction_pub = self.create_publisher(Prediction, "predictions", 10)
 
     def image_callback(self, msg):
         """Process an incoming frame and publish a JSON payload with results."""
@@ -140,11 +149,8 @@ class PredictionPublisher(Node):
         hands = self.hand_detector.parse_hands(hand_results, frame)
         persons = self.person_detector.parse_persons(person_results)
 
-        payload = {
-            "persons": persons,
-            "hands": hands
-        }
+        out = Prediction()
+        out.hands = hands
+        out.persons = persons
 
-        out = String()
-        out.data = json.dumps(payload)
         self.prediction_pub.publish(out)

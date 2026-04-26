@@ -29,8 +29,16 @@ ENV LC_ALL=en_US.UTF-8
 
 COPY . .
 
-RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
+RUN pip3 install -r requirements.txt colcon-common-extensions
 
-RUN pip3 install -r requirements.txt
+# Build custom ROS2 messages.
+RUN . /opt/ros/humble/setup.sh \
+    && mkdir -p /ros2_ws/src \
+    && cp -r robot_msgs /ros2_ws/src/ \
+    && cd /ros2_ws \
+    && colcon build --packages-select robot_msgs
+
+RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc \
+    && echo "source /ros2_ws/install/setup.bash" >> /root/.bashrc
 
 CMD ["/bin/bash"]

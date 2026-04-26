@@ -5,12 +5,12 @@ from cv_bridge import CvBridge
 
 
 class FramePublisher(Node):
-    def __init__(self):
+    def __init__(self, source):
         super().__init__("frame_publisher")
         self.publisher_ = self.create_publisher(Image, "image_raw", 10)
         self.timer = self.create_timer(0.01, self.time_callback)
         self.bridge = CvBridge()
-        self.cap = cv2.VideoCapture(0)
+        self.cap = cv2.VideoCapture(source)
 
     def time_callback(self):
         ret, frame = self.cap.read()

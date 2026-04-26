@@ -15,7 +15,7 @@
 // Member `header`
 #include "std_msgs/msg/detail/header__functions.h"
 // Member `persons`
-#include "robot_msgs/msg/detail/person__functions.h"
+#include "robot_msgs/msg/detail/person_state__functions.h"
 
 bool
 robot_msgs__msg__Context__init(robot_msgs__msg__Context * msg)
@@ -29,7 +29,7 @@ robot_msgs__msg__Context__init(robot_msgs__msg__Context * msg)
     return false;
   }
   // persons
-  if (!robot_msgs__msg__Person__Sequence__init(&msg->persons, 0)) {
+  if (!robot_msgs__msg__PersonState__Sequence__init(&msg->persons, 0)) {
     robot_msgs__msg__Context__fini(msg);
     return false;
   }
@@ -45,7 +45,7 @@ robot_msgs__msg__Context__fini(robot_msgs__msg__Context * msg)
   // header
   std_msgs__msg__Header__fini(&msg->header);
   // persons
-  robot_msgs__msg__Person__Sequence__fini(&msg->persons);
+  robot_msgs__msg__PersonState__Sequence__fini(&msg->persons);
 }
 
 bool
@@ -61,7 +61,7 @@ robot_msgs__msg__Context__are_equal(const robot_msgs__msg__Context * lhs, const 
     return false;
   }
   // persons
-  if (!robot_msgs__msg__Person__Sequence__are_equal(
+  if (!robot_msgs__msg__PersonState__Sequence__are_equal(
       &(lhs->persons), &(rhs->persons)))
   {
     return false;
@@ -84,7 +84,7 @@ robot_msgs__msg__Context__copy(
     return false;
   }
   // persons
-  if (!robot_msgs__msg__Person__Sequence__copy(
+  if (!robot_msgs__msg__PersonState__Sequence__copy(
       &(input->persons), &(output->persons)))
   {
     return false;

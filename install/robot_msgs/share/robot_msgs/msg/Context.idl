@@ -2,7 +2,7 @@
 // with input from robot_msgs/msg/Context.msg
 // generated code does not contain a copyright notice
 
-#include "robot_msgs/msg/Person.idl"
+#include "robot_msgs/msg/PersonState.idl"
 #include "std_msgs/msg/Header.idl"
 
 module robot_msgs {
@@ -10,7 +10,7 @@ module robot_msgs {
     struct Context {
       std_msgs::msg::Header header;
 
-      sequence<robot_msgs::msg::Person> persons;
+      sequence<robot_msgs::msg::PersonState> persons;
     };
   };
 };

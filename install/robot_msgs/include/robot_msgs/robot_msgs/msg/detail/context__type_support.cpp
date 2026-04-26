@@ -39,46 +39,46 @@ void Context_fini_function(void * message_memory)
 
 size_t size_function__Context__persons(const void * untyped_member)
 {
-  const auto * member = reinterpret_cast<const std::vector<robot_msgs::msg::Person> *>(untyped_member);
+  const auto * member = reinterpret_cast<const std::vector<robot_msgs::msg::PersonState> *>(untyped_member);
   return member->size();
 }
 
 const void * get_const_function__Context__persons(const void * untyped_member, size_t index)
 {
   const auto & member =
-    *reinterpret_cast<const std::vector<robot_msgs::msg::Person> *>(untyped_member);
+    *reinterpret_cast<const std::vector<robot_msgs::msg::PersonState> *>(untyped_member);
   return &member[index];
 }
 
 void * get_function__Context__persons(void * untyped_member, size_t index)
 {
   auto & member =
-    *reinterpret_cast<std::vector<robot_msgs::msg::Person> *>(untyped_member);
+    *reinterpret_cast<std::vector<robot_msgs::msg::PersonState> *>(untyped_member);
   return &member[index];
 }
 
 void fetch_function__Context__persons(
   const void * untyped_member, size_t index, void * untyped_value)
 {
-  const auto & item = *reinterpret_cast<const robot_msgs::msg::Person *>(
+  const auto & item = *reinterpret_cast<const robot_msgs::msg::PersonState *>(
     get_const_function__Context__persons(untyped_member, index));
-  auto & value = *reinterpret_cast<robot_msgs::msg::Person *>(untyped_value);
+  auto & value = *reinterpret_cast<robot_msgs::msg::PersonState *>(untyped_value);
   value = item;
 }
 
 void assign_function__Context__persons(
   void * untyped_member, size_t index, const void * untyped_value)
 {
-  auto & item = *reinterpret_cast<robot_msgs::msg::Person *>(
+  auto & item = *reinterpret_cast<robot_msgs::msg::PersonState *>(
     get_function__Context__persons(untyped_member, index));
-  const auto & value = *reinterpret_cast<const robot_msgs::msg::Person *>(untyped_value);
+  const auto & value = *reinterpret_cast<const robot_msgs::msg::PersonState *>(untyped_value);
   item = value;
 }
 
 void resize_function__Context__persons(void * untyped_member, size_t size)
 {
   auto * member =
-    reinterpret_cast<std::vector<robot_msgs::msg::Person> *>(untyped_member);
+    reinterpret_cast<std::vector<robot_msgs::msg::PersonState> *>(untyped_member);
   member->resize(size);
 }
 
@@ -104,7 +104,7 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember Context_messa
     "persons",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_MESSAGE,  // type
     0,  // upper bound of string
-    ::rosidl_typesupport_introspection_cpp::get_message_type_support_handle<robot_msgs::msg::Person>(),  // members of sub message
+    ::rosidl_typesupport_introspection_cpp::get_message_type_support_handle<robot_msgs::msg::PersonState>(),  // members of sub message
     true,  // is array
     0,  // array size
     false,  // is upper bound

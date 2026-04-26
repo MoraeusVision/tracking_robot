@@ -9,6 +9,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Context.msg"
   "msg/Landmark.msg"
   "msg/Person.msg"
+  "msg/PersonState.msg"
   "msg/Hand.msg"
   "msg/Prediction.msg"
   DEPENDENCIES std_msgs

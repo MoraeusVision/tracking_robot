@@ -20,7 +20,7 @@
 // Member 'header'
 #include "std_msgs/msg/detail/header__struct.hpp"
 // Member 'persons'
-#include "robot_msgs/msg/detail/person__struct.hpp"
+#include "robot_msgs/msg/detail/person_state__struct.hpp"
 
 #ifndef _WIN32
 # define DEPRECATED__robot_msgs__msg__Context __attribute__((deprecated))
@@ -57,7 +57,7 @@ struct Context_
     std_msgs::msg::Header_<ContainerAllocator>;
   _header_type header;
   using _persons_type =
-    std::vector<robot_msgs::msg::Person_<ContainerAllocator>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<robot_msgs::msg::Person_<ContainerAllocator>>>;
+    std::vector<robot_msgs::msg::PersonState_<ContainerAllocator>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<robot_msgs::msg::PersonState_<ContainerAllocator>>>;
   _persons_type persons;
 
   // setters for named parameter idiom
@@ -68,7 +68,7 @@ struct Context_
     return *this;
   }
   Type & set__persons(
-    const std::vector<robot_msgs::msg::Person_<ContainerAllocator>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<robot_msgs::msg::Person_<ContainerAllocator>>> & _arg)
+    const std::vector<robot_msgs::msg::PersonState_<ContainerAllocator>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<robot_msgs::msg::PersonState_<ContainerAllocator>>> & _arg)
   {
     this->persons = _arg;
     return *this;

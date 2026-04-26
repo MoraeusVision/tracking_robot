@@ -18,7 +18,7 @@
 // Member 'header'
 #include "std_msgs/msg/detail/header__traits.hpp"
 // Member 'persons'
-#include "robot_msgs/msg/detail/person__traits.hpp"
+#include "robot_msgs/msg/detail/person_state__traits.hpp"
 
 namespace robot_msgs
 {

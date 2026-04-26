@@ -6,5 +6,7 @@ msg/Landmark.idl
 msg/Landmark.msg
 msg/Person.idl
 msg/Person.msg
+msg/PersonState.idl
+msg/PersonState.msg
 msg/Prediction.idl
 msg/Prediction.msg

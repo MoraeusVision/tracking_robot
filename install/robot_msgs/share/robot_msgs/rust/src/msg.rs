@@ -19,7 +19,7 @@ pub struct Context {
 
     // This member is not documented.
     #[allow(missing_docs)]
-    pub persons: Vec<super::msg::Person>,
+    pub persons: Vec<super::msg::PersonState>,
 
 }
 
@@ -40,14 +40,14 @@ impl rosidl_runtime_rs::Message for Context {
         header: std_msgs::msg::Header::into_rmw_message(std::borrow::Cow::Owned(msg.header)).into_owned(),
         persons: msg.persons
           .into_iter()
-          .map(|elem| super::msg::Person::into_rmw_message(std::borrow::Cow::Owned(elem)).into_owned())
+          .map(|elem| super::msg::PersonState::into_rmw_message(std::borrow::Cow::Owned(elem)).into_owned())
           .collect(),
       }),
       std::borrow::Cow::Borrowed(msg) => std::borrow::Cow::Owned(Self::RmwMsg {
         header: std_msgs::msg::Header::into_rmw_message(std::borrow::Cow::Borrowed(&msg.header)).into_owned(),
         persons: msg.persons
           .iter()
-          .map(|elem| super::msg::Person::into_rmw_message(std::borrow::Cow::Borrowed(elem)).into_owned())
+          .map(|elem| super::msg::PersonState::into_rmw_message(std::borrow::Cow::Borrowed(elem)).into_owned())
           .collect(),
       })
     }
@@ -58,7 +58,7 @@ impl rosidl_runtime_rs::Message for Context {
       header: std_msgs::msg::Header::from_rmw_message(msg.header),
       persons: msg.persons
           .into_iter()
-          .map(super::msg::Person::from_rmw_message)
+          .map(super::msg::PersonState::from_rmw_message)
           .collect(),
     }
   }
@@ -174,6 +174,91 @@ impl rosidl_runtime_rs::Message for Person {
     Self {
       id: msg.id,
       bbox_xyxy: msg.bbox_xyxy,
+    }
+  }
+}
+
+
+// Corresponds to robot_msgs__msg__PersonState
+
+// This struct is not documented.
+#[allow(missing_docs)]
+
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub struct PersonState {
+
+    // This member is not documented.
+    #[allow(missing_docs)]
+    pub id: i32,
+
+
+    // This member is not documented.
+    #[allow(missing_docs)]
+    pub bbox_xyxy: [f32; 4],
+
+
+    // This member is not documented.
+    #[allow(missing_docs)]
+    pub last_seen: i32,
+
+
+    // This member is not documented.
+    #[allow(missing_docs)]
+    pub tracked: bool,
+
+
+    // This member is not documented.
+    #[allow(missing_docs)]
+    pub palm_held_seconds: i32,
+
+
+    // This member is not documented.
+    #[allow(missing_docs)]
+    pub visible: bool,
+
+}
+
+
+
+impl Default for PersonState {
+  fn default() -> Self {
+    <Self as rosidl_runtime_rs::Message>::from_rmw_message(super::msg::rmw::PersonState::default())
+  }
+}
+
+impl rosidl_runtime_rs::Message for PersonState {
+  type RmwMsg = super::msg::rmw::PersonState;
+
+  fn into_rmw_message(msg_cow: std::borrow::Cow<'_, Self>) -> std::borrow::Cow<'_, Self::RmwMsg> {
+    match msg_cow {
+      std::borrow::Cow::Owned(msg) => std::borrow::Cow::Owned(Self::RmwMsg {
+        id: msg.id,
+        bbox_xyxy: msg.bbox_xyxy,
+        last_seen: msg.last_seen,
+        tracked: msg.tracked,
+        palm_held_seconds: msg.palm_held_seconds,
+        visible: msg.visible,
+      }),
+      std::borrow::Cow::Borrowed(msg) => std::borrow::Cow::Owned(Self::RmwMsg {
+      id: msg.id,
+        bbox_xyxy: msg.bbox_xyxy,
+      last_seen: msg.last_seen,
+      tracked: msg.tracked,
+      palm_held_seconds: msg.palm_held_seconds,
+      visible: msg.visible,
+      })
+    }
+  }
+
+  fn from_rmw_message(msg: Self::RmwMsg) -> Self {
+    Self {
+      id: msg.id,
+      bbox_xyxy: msg.bbox_xyxy,
+      last_seen: msg.last_seen,
+      tracked: msg.tracked,
+      palm_held_seconds: msg.palm_held_seconds,
+      visible: msg.visible,
     }
   }
 }

@@ -1,5 +1,5 @@
 from rclpy.node import Node
-from robot_msgs.msg import Prediction, Context, Person
+from robot_msgs.msg import Prediction, Context, PersonState as PersonStateMsg
 from dataclasses import dataclass
 from typing import Dict
 
@@ -20,21 +20,29 @@ class PersonManager:
         self.people: Dict[int, PersonState] = {}
 
     def update(self, persons_msg, stamp_sec: int):
+        present_ids = set()
 
         for p in persons_msg:
             person_id = int(p.id)
             bbox = tuple(float(v) for v in p.bbox_xyxy)
+            present_ids.add(person_id)
 
             if person_id in self.people:
                 person = self.people[person_id]
                 person.bbox_xyxy = bbox
                 person.last_seen = stamp_sec
+                person.visible = True
             else:
                 self.people[person_id] = PersonState(
                     id=person_id,
                     bbox_xyxy=bbox,
                     last_seen=stamp_sec,
+                    visible=True,
                 )
+
+        for person_id, person in self.people.items():
+            if person_id not in present_ids:
+                person.visible = False
 
         to_remove = []
         for person_id, person in self.people.items():
@@ -71,9 +79,13 @@ class ContextPublisher(Node):
 
         out.persons = []
         for state in person_states.values():
-            person_msg = Person()
+            person_msg = PersonStateMsg()
             person_msg.id = state.id
             person_msg.bbox_xyxy = [float(v) for v in state.bbox_xyxy]
+            person_msg.last_seen = state.last_seen
+            person_msg.tracked = state.tracked
+            person_msg.palm_held_seconds = state.palm_held_seconds
+            person_msg.visible = state.visible
             out.persons.append(person_msg)
 
         self.context_publisher.publish(out)

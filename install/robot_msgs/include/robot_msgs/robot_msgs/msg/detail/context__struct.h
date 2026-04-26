@@ -21,13 +21,13 @@ extern "C"
 // Member 'header'
 #include "std_msgs/msg/detail/header__struct.h"
 // Member 'persons'
-#include "robot_msgs/msg/detail/person__struct.h"
+#include "robot_msgs/msg/detail/person_state__struct.h"
 
 /// Struct defined in msg/Context in the package robot_msgs.
 typedef struct robot_msgs__msg__Context
 {
   std_msgs__msg__Header header;
-  robot_msgs__msg__Person__Sequence persons;
+  robot_msgs__msg__PersonState__Sequence persons;
 } robot_msgs__msg__Context;
 
 // Struct for a sequence of robot_msgs__msg__Context.

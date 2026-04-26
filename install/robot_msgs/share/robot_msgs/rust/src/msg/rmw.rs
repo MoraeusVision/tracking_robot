@@ -33,7 +33,7 @@ pub struct Context {
 
     // This member is not documented.
     #[allow(missing_docs)]
-    pub persons: rosidl_runtime_rs::Sequence<super::super::msg::rmw::Person>,
+    pub persons: rosidl_runtime_rs::Sequence<super::super::msg::rmw::PersonState>,
 
 }
 
@@ -240,6 +240,105 @@ impl rosidl_runtime_rs::RmwMessage for Person where Self: Sized {
   fn get_type_support() -> *const std::ffi::c_void {
     // SAFETY: No preconditions for this function.
     unsafe { rosidl_typesupport_c__get_message_type_support_handle__robot_msgs__msg__Person() }
+  }
+}
+
+
+#[link(name = "robot_msgs__rosidl_typesupport_c")]
+extern "C" {
+    fn rosidl_typesupport_c__get_message_type_support_handle__robot_msgs__msg__PersonState() -> *const std::ffi::c_void;
+}
+
+#[link(name = "robot_msgs__rosidl_generator_c")]
+extern "C" {
+    fn robot_msgs__msg__PersonState__init(msg: *mut PersonState) -> bool;
+    fn robot_msgs__msg__PersonState__Sequence__init(seq: *mut rosidl_runtime_rs::Sequence<PersonState>, size: usize) -> bool;
+    fn robot_msgs__msg__PersonState__Sequence__fini(seq: *mut rosidl_runtime_rs::Sequence<PersonState>);
+    fn robot_msgs__msg__PersonState__Sequence__copy(in_seq: &rosidl_runtime_rs::Sequence<PersonState>, out_seq: *mut rosidl_runtime_rs::Sequence<PersonState>) -> bool;
+}
+
+// Corresponds to robot_msgs__msg__PersonState
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+
+
+// This struct is not documented.
+#[allow(missing_docs)]
+
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub struct PersonState {
+
+    // This member is not documented.
+    #[allow(missing_docs)]
+    pub id: i32,
+
+
+    // This member is not documented.
+    #[allow(missing_docs)]
+    pub bbox_xyxy: [f32; 4],
+
+
+    // This member is not documented.
+    #[allow(missing_docs)]
+    pub last_seen: i32,
+
+
+    // This member is not documented.
+    #[allow(missing_docs)]
+    pub tracked: bool,
+
+
+    // This member is not documented.
+    #[allow(missing_docs)]
+    pub palm_held_seconds: i32,
+
+
+    // This member is not documented.
+    #[allow(missing_docs)]
+    pub visible: bool,
+
+}
+
+
+
+impl Default for PersonState {
+  fn default() -> Self {
+    unsafe {
+      let mut msg = std::mem::zeroed();
+      if !robot_msgs__msg__PersonState__init(&mut msg as *mut _) {
+        panic!("Call to robot_msgs__msg__PersonState__init() failed");
+      }
+      msg
+    }
+  }
+}
+
+impl rosidl_runtime_rs::SequenceAlloc for PersonState {
+  fn sequence_init(seq: &mut rosidl_runtime_rs::Sequence<Self>, size: usize) -> bool {
+    // SAFETY: This is safe since the pointer is guaranteed to be valid/initialized.
+    unsafe { robot_msgs__msg__PersonState__Sequence__init(seq as *mut _, size) }
+  }
+  fn sequence_fini(seq: &mut rosidl_runtime_rs::Sequence<Self>) {
+    // SAFETY: This is safe since the pointer is guaranteed to be valid/initialized.
+    unsafe { robot_msgs__msg__PersonState__Sequence__fini(seq as *mut _) }
+  }
+  fn sequence_copy(in_seq: &rosidl_runtime_rs::Sequence<Self>, out_seq: &mut rosidl_runtime_rs::Sequence<Self>) -> bool {
+    // SAFETY: This is safe since the pointer is guaranteed to be valid/initialized.
+    unsafe { robot_msgs__msg__PersonState__Sequence__copy(in_seq, out_seq as *mut _) }
+  }
+}
+
+impl rosidl_runtime_rs::Message for PersonState {
+  type RmwMsg = Self;
+  fn into_rmw_message(msg_cow: std::borrow::Cow<'_, Self>) -> std::borrow::Cow<'_, Self::RmwMsg> { msg_cow }
+  fn from_rmw_message(msg: Self::RmwMsg) -> Self { msg }
+}
+
+impl rosidl_runtime_rs::RmwMessage for PersonState where Self: Sized {
+  const TYPE_NAME: &'static str = "robot_msgs/msg/PersonState";
+  fn get_type_support() -> *const std::ffi::c_void {
+    // SAFETY: No preconditions for this function.
+    unsafe { rosidl_typesupport_c__get_message_type_support_handle__robot_msgs__msg__PersonState() }
   }
 }
 

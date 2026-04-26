@@ -18,9 +18,9 @@
 // Member `header`
 #include "std_msgs/msg/detail/header__rosidl_typesupport_introspection_c.h"
 // Member `persons`
-#include "robot_msgs/msg/person.h"
+#include "robot_msgs/msg/person_state.h"
 // Member `persons`
-#include "robot_msgs/msg/detail/person__rosidl_typesupport_introspection_c.h"
+#include "robot_msgs/msg/detail/person_state__rosidl_typesupport_introspection_c.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -44,56 +44,56 @@ void robot_msgs__msg__Context__rosidl_typesupport_introspection_c__Context_fini_
 size_t robot_msgs__msg__Context__rosidl_typesupport_introspection_c__size_function__Context__persons(
   const void * untyped_member)
 {
-  const robot_msgs__msg__Person__Sequence * member =
-    (const robot_msgs__msg__Person__Sequence *)(untyped_member);
+  const robot_msgs__msg__PersonState__Sequence * member =
+    (const robot_msgs__msg__PersonState__Sequence *)(untyped_member);
   return member->size;
 }
 
 const void * robot_msgs__msg__Context__rosidl_typesupport_introspection_c__get_const_function__Context__persons(
   const void * untyped_member, size_t index)
 {
-  const robot_msgs__msg__Person__Sequence * member =
-    (const robot_msgs__msg__Person__Sequence *)(untyped_member);
+  const robot_msgs__msg__PersonState__Sequence * member =
+    (const robot_msgs__msg__PersonState__Sequence *)(untyped_member);
   return &member->data[index];
 }
 
 void * robot_msgs__msg__Context__rosidl_typesupport_introspection_c__get_function__Context__persons(
   void * untyped_member, size_t index)
 {
-  robot_msgs__msg__Person__Sequence * member =
-    (robot_msgs__msg__Person__Sequence *)(untyped_member);
+  robot_msgs__msg__PersonState__Sequence * member =
+    (robot_msgs__msg__PersonState__Sequence *)(untyped_member);
   return &member->data[index];
 }
 
 void robot_msgs__msg__Context__rosidl_typesupport_introspection_c__fetch_function__Context__persons(
   const void * untyped_member, size_t index, void * untyped_value)
 {
-  const robot_msgs__msg__Person * item =
-    ((const robot_msgs__msg__Person *)
+  const robot_msgs__msg__PersonState * item =
+    ((const robot_msgs__msg__PersonState *)
     robot_msgs__msg__Context__rosidl_typesupport_introspection_c__get_const_function__Context__persons(untyped_member, index));
-  robot_msgs__msg__Person * value =
-    (robot_msgs__msg__Person *)(untyped_value);
+  robot_msgs__msg__PersonState * value =
+    (robot_msgs__msg__PersonState *)(untyped_value);
   *value = *item;
 }
 
 void robot_msgs__msg__Context__rosidl_typesupport_introspection_c__assign_function__Context__persons(
   void * untyped_member, size_t index, const void * untyped_value)
 {
-  robot_msgs__msg__Person * item =
-    ((robot_msgs__msg__Person *)
+  robot_msgs__msg__PersonState * item =
+    ((robot_msgs__msg__PersonState *)
     robot_msgs__msg__Context__rosidl_typesupport_introspection_c__get_function__Context__persons(untyped_member, index));
-  const robot_msgs__msg__Person * value =
-    (const robot_msgs__msg__Person *)(untyped_value);
+  const robot_msgs__msg__PersonState * value =
+    (const robot_msgs__msg__PersonState *)(untyped_value);
   *item = *value;
 }
 
 bool robot_msgs__msg__Context__rosidl_typesupport_introspection_c__resize_function__Context__persons(
   void * untyped_member, size_t size)
 {
-  robot_msgs__msg__Person__Sequence * member =
-    (robot_msgs__msg__Person__Sequence *)(untyped_member);
-  robot_msgs__msg__Person__Sequence__fini(member);
-  return robot_msgs__msg__Person__Sequence__init(member, size);
+  robot_msgs__msg__PersonState__Sequence * member =
+    (robot_msgs__msg__PersonState__Sequence *)(untyped_member);
+  robot_msgs__msg__PersonState__Sequence__fini(member);
+  return robot_msgs__msg__PersonState__Sequence__init(member, size);
 }
 
 static rosidl_typesupport_introspection_c__MessageMember robot_msgs__msg__Context__rosidl_typesupport_introspection_c__Context_message_member_array[2] = {
@@ -157,7 +157,7 @@ ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(rosidl_typesupport_introspecti
   robot_msgs__msg__Context__rosidl_typesupport_introspection_c__Context_message_member_array[0].members_ =
     ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(rosidl_typesupport_introspection_c, std_msgs, msg, Header)();
   robot_msgs__msg__Context__rosidl_typesupport_introspection_c__Context_message_member_array[1].members_ =
-    ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(rosidl_typesupport_introspection_c, robot_msgs, msg, Person)();
+    ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(rosidl_typesupport_introspection_c, robot_msgs, msg, PersonState)();
   if (!robot_msgs__msg__Context__rosidl_typesupport_introspection_c__Context_message_type_support_handle.typesupport_identifier) {
     robot_msgs__msg__Context__rosidl_typesupport_introspection_c__Context_message_type_support_handle.typesupport_identifier =
       rosidl_typesupport_introspection_c__identifier;

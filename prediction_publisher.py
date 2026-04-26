@@ -150,6 +150,10 @@ class PredictionPublisher(Node):
         persons = self.person_detector.parse_persons(person_results)
 
         out = Prediction()
+
+        out.header.stamp = msg.header.stamp
+        out.header.frame_id = msg.header.frame_id
+
         out.hands = hands
         out.persons = persons
 

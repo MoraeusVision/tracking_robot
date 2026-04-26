@@ -1,7 +1,6 @@
 import argparse
 import os
 
-from pipeline import CVPipeline
 import rclpy
 from rclpy.executors import MultiThreadedExecutor
 from frame_publisher import FramePublisher
@@ -84,10 +83,15 @@ def main(args=None):
     executor.add_node(image_publisher)
     executor.add_node(prediction_publisher)
 
-    executor.spin()
-
-    image_publisher.destroy_node()
-    rclpy.shutdown()
+    try:
+        executor.spin()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        executor.shutdown()
+        prediction_publisher.destroy_node()
+        image_publisher.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == "__main__":

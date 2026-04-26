@@ -29,6 +29,7 @@ class PersonDetector:
         return results[0]
 
     def parse_persons(self, results):
+        """Convert YOLO detections into a list of Person messages."""
         persons = []
 
         boxes = results.boxes
@@ -36,6 +37,7 @@ class PersonDetector:
             return persons
 
         for i in range(len(boxes)):
+            # YOLO class 0 corresponds to person.
             if int(boxes.cls[i]) != 0:
                 continue
 
@@ -44,8 +46,6 @@ class PersonDetector:
             # ID
             if boxes.id is not None:
                 person_msg.id = int(boxes.id[i])
-            else:
-                person_msg.id = -1
 
             # Bounding box
             box = boxes.xyxy[i].cpu().tolist()
@@ -141,8 +141,9 @@ class PredictionPublisher(Node):
         self.prediction_pub = self.create_publisher(Prediction, "predictions", 10)
 
     def image_callback(self, msg):
-        """Process an incoming frame and publish a JSON payload with results."""
+        """Process an incoming frame and publish a Prediction ROS message."""
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+
         person_results = self.person_detector.infer(frame)
         hand_results = self.hand_detector.infer(frame)
         

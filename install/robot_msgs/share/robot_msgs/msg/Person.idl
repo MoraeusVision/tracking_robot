@@ -1,0 +1,15 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from robot_msgs/msg/Person.msg
+// generated code does not contain a copyright notice
+
+
+module robot_msgs {
+  module msg {
+    typedef float float__4[4];
+    struct Person {
+      int32 id;
+
+      float__4 bbox_xyxy;
+    };
+  };
+};

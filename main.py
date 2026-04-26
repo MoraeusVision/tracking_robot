@@ -3,6 +3,7 @@ import rclpy
 from rclpy.executors import MultiThreadedExecutor
 from frame_publisher import FramePublisher
 from prediction_publisher import PredictionPublisher
+from context_publisher import ContextPublisher
 
 
 SOURCE = 0 #"examples/example1.mp4"
@@ -31,10 +32,12 @@ def main(args=None):
 
     image_publisher = FramePublisher(SOURCE)
     prediction_publisher = PredictionPublisher(ENGINE_PATH, PT_PATH, MP_PATH)
+    context_publisher = ContextPublisher()
 
     executor = MultiThreadedExecutor()
     executor.add_node(image_publisher)
     executor.add_node(prediction_publisher)
+    executor.add_node(context_publisher)
 
     try:
         executor.spin()

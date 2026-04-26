@@ -1,0 +1,19 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from robot_msgs/msg/Prediction.msg
+// generated code does not contain a copyright notice
+
+#include "robot_msgs/msg/Hand.idl"
+#include "robot_msgs/msg/Person.idl"
+#include "std_msgs/msg/Header.idl"
+
+module robot_msgs {
+  module msg {
+    struct Prediction {
+      std_msgs::msg::Header header;
+
+      sequence<robot_msgs::msg::Person> persons;
+
+      sequence<robot_msgs::msg::Hand> hands;
+    };
+  };
+};

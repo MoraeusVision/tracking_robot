@@ -1,15 +1,22 @@
-from rclpy.node import Node
-from robot_msgs.msg import Prediction, Context, PersonState as PersonStateMsg
 from dataclasses import dataclass
 from typing import Dict
 
-TIME_TO_FORGET = 3
+from rclpy.node import Node
+from robot_msgs.msg import (
+    Context,
+    HandState as HandStateMsg,
+    PersonState as PersonStateMsg,
+    Prediction,
+)
+
+SECONDS_TO_FORGET = 3
+
 
 @dataclass
 class PersonState:
     id: int
     bbox_xyxy: tuple[float, float, float, float]
-    last_seen: int
+    last_seen: float
     tracked: bool = False
     palm_held_seconds: int = 0
     visible: bool = True
@@ -46,19 +53,68 @@ class PersonManager:
 
         to_remove = []
         for person_id, person in self.people.items():
-            if stamp_sec - person.last_seen > TIME_TO_FORGET:
+            if stamp_sec - person.last_seen > SECONDS_TO_FORGET:
                 to_remove.append(person_id)
 
         for person_id in to_remove:
             del self.people[person_id]
 
-        return self.people
+        person_states: list[PersonStateMsg] = []
+        for state in self.people.values():
+            person_msg = PersonStateMsg()
+            person_msg.id = state.id
+            person_msg.bbox_xyxy = [float(v) for v in state.bbox_xyxy]
+            person_msg.last_seen = state.last_seen
+            person_msg.tracked = state.tracked
+            person_msg.palm_held_seconds = state.palm_held_seconds
+            person_msg.visible = state.visible
+            person_states.append(person_msg)
+
+        return person_states
+
+
+class HandManager:
+    def __init__(self):
+        self.hands: list[HandStateMsg] = []
+
+    @staticmethod
+    def _point_inside_bbox(x: float, y: float, bbox_xyxy: tuple[float, float, float, float]) -> bool:
+        x1, y1, x2, y2 = bbox_xyxy
+        return x1 <= x <= x2 and y1 <= y <= y2
+
+    def update(self, hands_msg, persons: Dict[int, PersonState]):
+        hand_states: list[HandStateMsg] = []
+
+        for hand in hands_msg:
+            cx = float(hand.center[0]) if len(hand.center) > 0 else 0.0
+            cy = float(hand.center[1]) if len(hand.center) > 1 else 0.0
+
+            owner = -1
+
+            for person in persons.values():
+                if not person.visible:
+                    continue
+
+                if self._point_inside_bbox(cx, cy, person.bbox_xyxy):
+                    owner = int(person.id)
+                    break
+
+            hand_state_msg = HandStateMsg()
+            hand_state_msg.owner = owner
+            hand_state_msg.gesture = hand.gesture
+            hand_state_msg.center = [cx, cy]
+            hand_state_msg.landmarks = hand.landmarks
+            hand_states.append(hand_state_msg)
+
+        self.hands = hand_states
+        return hand_states
 
 
 class ContextPublisher(Node):
     def __init__(self):
         super().__init__("context_publisher")
         self.person_manager = PersonManager()
+        self.hand_manager = HandManager()
         self.context_publisher = self.create_publisher(Context, "context", 10)
 
         self.subscription = self.create_subscription(
@@ -70,22 +126,18 @@ class ContextPublisher(Node):
 
     def context_callback(self, msg):
         persons = msg.persons
+        hands = msg.hands
         stamp_sec = int(msg.header.stamp.sec)
+
         person_states = self.person_manager.update(persons, stamp_sec)
+        hand_states = self.hand_manager.update(hands, self.person_manager.people)
 
         out = Context()
         out.header.stamp = msg.header.stamp
         out.header.frame_id = msg.header.frame_id
 
-        out.persons = []
-        for state in person_states.values():
-            person_msg = PersonStateMsg()
-            person_msg.id = state.id
-            person_msg.bbox_xyxy = [float(v) for v in state.bbox_xyxy]
-            person_msg.last_seen = state.last_seen
-            person_msg.tracked = state.tracked
-            person_msg.palm_held_seconds = state.palm_held_seconds
-            person_msg.visible = state.visible
-            out.persons.append(person_msg)
+        out.persons = person_states
+
+        out.hands = hand_states
 
         self.context_publisher.publish(out)

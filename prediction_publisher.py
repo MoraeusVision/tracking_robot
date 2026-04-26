@@ -27,7 +27,32 @@ class PersonDetector:
         """Run inference on a frame and return the first result object."""
         results = self.model.track(frame, persist=True, verbose=False)
         return results[0]
-    
+
+    def parse_persons(self, results):
+        persons = []
+
+        boxes = results.boxes
+        if boxes is None:
+            return persons
+
+        for i in range(len(boxes)):
+            if int(boxes.cls[i]) != 0:  # person class
+                continue
+
+            box = boxes.xyxy[i].cpu().tolist()
+
+            if boxes.id is not None:
+                person_id = int(boxes.id[i])
+            else:
+                person_id = None
+
+            persons.append({
+                "box_xyxy": box,
+                "id": person_id
+            })
+
+        return persons
+                    
 
 class HandDetector:
     """Recognize hand gestures and extract hand data from MediaPipe results."""
@@ -68,7 +93,8 @@ class HandDetector:
 
             hands.append({
                 "gesture": gesture.category_name if gesture else None,
-                "center": [cx, cy]
+                "center": [cx, cy],
+                "landmarks": landmarks
             })
 
         return hands
@@ -112,21 +138,10 @@ class PredictionPublisher(Node):
         hand_results = self.hand_detector.infer(frame)
         
         hands = self.hand_detector.parse_hands(hand_results, frame)
-        boxes = person_results.boxes
-
-        if boxes is not None and len(boxes) > 0:
-            cls = boxes.cls.cpu().numpy()
-            mask = cls == 0 # Person class
-
-            boxes_xyxy = boxes.xyxy.cpu().numpy()[mask].tolist()
-            ids = boxes.id.cpu().numpy().astype(int)[mask].tolist() if boxes.id is not None else []
-        else:
-            boxes_xyxy = []
-            ids = []
+        persons = self.person_detector.parse_persons(person_results)
 
         payload = {
-            "boxes_xyxy": boxes_xyxy,
-            "ids": ids,
+            "persons": persons,
             "hands": hands
         }
 

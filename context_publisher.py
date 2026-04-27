@@ -9,7 +9,7 @@ from robot_msgs.msg import (
     Prediction,
 )
 
-SECONDS_TO_FORGET = 3
+SECONDS_TO_FORGET = 2
 
 
 @dataclass

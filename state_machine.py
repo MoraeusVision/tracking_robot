@@ -20,6 +20,13 @@ class StateMachine:
         self.hand_score = {}
         self.last_time: Optional[float] = None
 
+        self.lost_target_timer = 0.0
+        self.LOST_TIMEOUT = 3.0
+
+        self.COOLDOWN = 3.0
+        self.cooldown_timer = 0.0
+        self.in_cooldown = False
+
         self.INCREASE_RATE = 1.0
         self.DECAY_RATE = 0.5
         self.TRACK_THRESHOLD = 3.0
@@ -34,6 +41,15 @@ class StateMachine:
 
         dt = now - self.last_time
         self.last_time = now
+
+        # cooldown countdown
+        if self.in_cooldown:
+            self.cooldown_timer -= dt
+            if self.cooldown_timer <= 0:
+                self.in_cooldown = False
+            else:
+                # skip all scoring during cooldown
+                return (self.state.name, self.target_id)
 
         if self.state == State.SEARCH:
             return self._handle_search(context, dt)
@@ -62,7 +78,7 @@ class StateMachine:
             score = max(0.0, min(self.MAX_SCORE, score))
 
             if score > 0:
-                print(f"Score for ID{person.id}: {score}")
+                print(f"Score for ID{person.id}: {round(score, 2)}")
 
             self.hand_score[person.id] = score
 
@@ -70,6 +86,9 @@ class StateMachine:
                 self.state = State.TRACK
                 self.target_id = person.id
                 self.hand_score[person.id] = 0
+                self.in_cooldown = True
+                self.cooldown_timer = self.COOLDOWN
+                print(f"Tracking ID{self.target_id}!")
                 return ("TRACK", person.id)
 
         for pid in list(self.hand_score.keys()):
@@ -81,10 +100,22 @@ class StateMachine:
     def _handle_track(self, context, dt):
         target = next((p for p in context.persons if p.id == self.target_id), None)
 
+        # -------------------------
+        # LOST TARGET HANDLING (GRACE PERIOD)
+        # -------------------------
         if target is None or not target.visible:
-            self._reset()
-            return ("SEARCH", None)
+            self.lost_target_timer += dt
 
+            if self.lost_target_timer > self.LOST_TIMEOUT:
+                print("Lost target → SEARCH")
+                self._reset()
+                return ("SEARCH", None)
+
+            return ("TRACK", self.target_id)
+
+        # target is valid again
+        self.lost_target_timer = 0.0
+        
         has_open_palm = any(
             h.owner == target.id and h.gesture == GESTURE
             for h in context.hands
@@ -100,18 +131,21 @@ class StateMachine:
         score = max(0.0, min(self.MAX_SCORE, score))
 
         if score > 0:
-                print(f"Score for ID{target.id}: {score}")
+            print(f"Score for ID{target.id}: {round(score, 2)}")
 
         self.hand_score[target.id] = score
 
         if score > self.TRACK_THRESHOLD:
             self.hand_score[target.id] = 0
             self._reset()
+            print(f"Searching...")
             return ("SEARCH", None)
 
         return ("TRACK", target.id)
 
     def _reset(self):
+        self.in_cooldown = True
+        self.cooldown_timer = self.COOLDOWN
         self.state = State.SEARCH
         self.target_id = None
 
@@ -131,6 +165,3 @@ class StateMachineNode(Node):
 
     def callback(self, msg: Context):
         state, target_id = self.sm.update(msg)
-
-        if state == "TRACK":
-            self.get_logger().info(f"Tracking {target_id}")

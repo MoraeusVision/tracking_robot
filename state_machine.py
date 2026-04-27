@@ -100,9 +100,7 @@ class StateMachine:
     def _handle_track(self, context, dt):
         target = next((p for p in context.persons if p.id == self.target_id), None)
 
-        # -------------------------
-        # LOST TARGET HANDLING (GRACE PERIOD)
-        # -------------------------
+        # Handles lost targets
         if target is None or not target.visible:
             self.lost_target_timer += dt
 
@@ -113,7 +111,6 @@ class StateMachine:
 
             return ("TRACK", self.target_id)
 
-        # target is valid again
         self.lost_target_timer = 0.0
         
         has_open_palm = any(

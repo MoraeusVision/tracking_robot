@@ -17,7 +17,6 @@ class StateMachine:
         self.state = State.SEARCH
         self.target_id: Optional[int] = None
 
-        self.hand_score = {}
         self.last_time: Optional[float] = None
 
         self.lost_target_timer = 0.0
@@ -63,37 +62,15 @@ class StateMachine:
             if not person.visible:
                 continue
 
-            has_open_palm = any(
-                h.owner == person.id and h.gesture == GESTURE
-                for h in context.hands
-            )
-
-            score = self.hand_score.get(person.id, 0.0)
-
-            if has_open_palm:
-                score += self.INCREASE_RATE * dt
-            else:
-                score -= self.DECAY_RATE * dt
-            
-            score = max(0.0, min(self.MAX_SCORE, score))
-
-            if score > 0:
-                print(f"Score for ID{person.id}: {round(score, 2)}")
-
-            self.hand_score[person.id] = score
+            score = person.palm_held_seconds
 
             if score >= self.TRACK_THRESHOLD:
                 self.state = State.TRACK
                 self.target_id = person.id
-                self.hand_score[person.id] = 0
                 self.in_cooldown = True
                 self.cooldown_timer = self.COOLDOWN
                 print(f"Tracking ID{self.target_id}!")
                 return ("TRACK", person.id)
-
-        for pid in list(self.hand_score.keys()):
-            if pid not in visible_ids:
-                del self.hand_score[pid]
 
         return ("SEARCH", None)
 
@@ -113,27 +90,9 @@ class StateMachine:
 
         self.lost_target_timer = 0.0
         
-        has_open_palm = any(
-            h.owner == target.id and h.gesture == GESTURE
-            for h in context.hands
-        )
-
-        score = self.hand_score.get(target.id, 0.0)
-
-        if has_open_palm:
-            score += self.INCREASE_RATE * dt
-        else:
-            score -= self.DECAY_RATE * dt
-
-        score = max(0.0, min(self.MAX_SCORE, score))
-
-        if score > 0:
-            print(f"Score for ID{target.id}: {round(score, 2)}")
-
-        self.hand_score[target.id] = score
+        score = target.palm_held_seconds
 
         if score > self.TRACK_THRESHOLD:
-            self.hand_score[target.id] = 0
             self._reset()
             print(f"Searching...")
             return ("SEARCH", None)

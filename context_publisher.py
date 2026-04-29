@@ -6,7 +6,7 @@ from robot_msgs.msg import (
     Context,
     HandState as HandStateMsg,
     PersonState as PersonStateMsg,
-    Prediction,
+    Prediction, RobotState
 )
 
 SECONDS_TO_FORGET = 2
@@ -87,7 +87,7 @@ class PersonManager:
             person.palm_held_time = max(0.0, min(self.MAX_SCORE, person.palm_held_time))
             if person.palm_held_time > 0:
                 print(f"{person.id}: {person.palm_held_time}")
-                
+
         # --- remove old ---
         to_remove = []
         for person_id, person in self.people.items():
@@ -105,7 +105,7 @@ class PersonManager:
             person_msg.bbox_xyxy = [float(v) for v in state.bbox_xyxy]
             person_msg.last_seen = int(state.last_seen)
             person_msg.tracked = state.tracked
-            person_msg.palm_held_seconds = int(state.palm_held_time)
+            person_msg.palm_held_seconds = state.palm_held_time
             person_msg.visible = state.visible
             person_states.append(person_msg)
 
@@ -164,6 +164,13 @@ class ContextPublisher(Node):
             10,
         )
 
+        self.state_subscription = self.create_subscription(
+            RobotState,
+            "robot_state",
+            self.state_callback,
+            10,
+        )
+
     def context_callback(self, msg):
         persons = msg.persons
         hands = msg.hands
@@ -182,3 +189,9 @@ class ContextPublisher(Node):
         out.hands = hand_states
 
         self.context_publisher.publish(out)
+
+    def state_callback(self, msg):
+        print(msg)
+        if msg.state_changed:
+            for person in self.person_manager.people.values():
+                person.palm_held_time = 0.0

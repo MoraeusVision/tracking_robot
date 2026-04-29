@@ -3,7 +3,7 @@ from typing import Optional
 
 import rclpy
 from rclpy.node import Node
-from robot_msgs.msg import Context
+from robot_msgs.msg import Context, RobotState
 
 GESTURE = "Open_Palm"
 
@@ -12,7 +12,7 @@ class State(Enum):
     TRACK = 1
 
 
-class StateMachine:
+class StateMachine():
     def __init__(self):
         self.state = State.SEARCH
         self.target_id: Optional[int] = None
@@ -22,42 +22,33 @@ class StateMachine:
         self.lost_target_timer = 0.0
         self.LOST_TIMEOUT = 3.0
 
-        self.COOLDOWN = 3.0
-        self.cooldown_timer = 0.0
-        self.in_cooldown = False
-
         self.INCREASE_RATE = 1.0
         self.DECAY_RATE = 0.5
         self.TRACK_THRESHOLD = 3.0
         self.MAX_SCORE = 5.0
 
     def update(self, context: Context):
+        prev_state = self.state
+
         now = context.header.stamp.sec + context.header.stamp.nanosec * 1e-9
 
         if self.last_time is None:
             self.last_time = now
-            return ("SEARCH", None)
+            return False
 
         dt = now - self.last_time
         self.last_time = now
 
-        # cooldown countdown
-        if self.in_cooldown:
-            self.cooldown_timer -= dt
-            if self.cooldown_timer <= 0:
-                self.in_cooldown = False
-            else:
-                # skip all scoring during cooldown
-                return (self.state.name, self.target_id)
-
         if self.state == State.SEARCH:
-            return self._handle_search(context, dt)
+            self._handle_search(context)
         else:
-            return self._handle_track(context, dt)
+            self._handle_track(context, dt)
 
-    def _handle_search(self, context, dt):
-        visible_ids = {p.id for p in context.persons if p.visible}
+        state_changed = (self.state != prev_state)
 
+        return state_changed
+
+    def _handle_search(self, context):
         for person in context.persons:
             if not person.visible:
                 continue
@@ -67,12 +58,8 @@ class StateMachine:
             if score >= self.TRACK_THRESHOLD:
                 self.state = State.TRACK
                 self.target_id = person.id
-                self.in_cooldown = True
-                self.cooldown_timer = self.COOLDOWN
                 print(f"Tracking ID{self.target_id}!")
-                return ("TRACK", person.id)
-
-        return ("SEARCH", None)
+                return
 
     def _handle_track(self, context, dt):
         target = next((p for p in context.persons if p.id == self.target_id), None)
@@ -84,9 +71,9 @@ class StateMachine:
             if self.lost_target_timer > self.LOST_TIMEOUT:
                 print("Lost target → SEARCH")
                 self._reset()
-                return ("SEARCH", None)
+                return
 
-            return ("TRACK", self.target_id)
+            return
 
         self.lost_target_timer = 0.0
         
@@ -95,20 +82,16 @@ class StateMachine:
         if score > self.TRACK_THRESHOLD:
             self._reset()
             print(f"Searching...")
-            return ("SEARCH", None)
-
-        return ("TRACK", target.id)
+            return
 
     def _reset(self):
-        self.in_cooldown = True
-        self.cooldown_timer = self.COOLDOWN
         self.state = State.SEARCH
         self.target_id = None
 
 
 class StateMachineNode(Node):
     def __init__(self):
-        super().__init__("state_machine")
+        super().__init__("robot_state")
 
         self.sm = StateMachine()
 
@@ -119,5 +102,19 @@ class StateMachineNode(Node):
             10,
         )
 
+        self.publisher = self.create_publisher(
+            RobotState,
+            "robot_state",
+            10,
+        )
+
     def callback(self, msg: Context):
-        state, target_id = self.sm.update(msg)
+        changed = self.sm.update(msg)
+
+        if not changed:
+            return
+
+        out = RobotState()
+        out.state_changed = True
+
+        self.publisher.publish(out)

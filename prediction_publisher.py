@@ -154,6 +154,7 @@ class PredictionPublisher(Node):
 
         out.header.stamp = msg.header.stamp
         out.header.frame_id = msg.header.frame_id
+        out.frame = msg
 
         out.hands = hands
         out.persons = persons

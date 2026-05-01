@@ -5,7 +5,6 @@ import supervision as sv
 from cv_bridge import CvBridge
 from rclpy.node import Node
 from robot_msgs.msg import Context
-from sensor_msgs.msg import Image
 
 OUTPUT_PATH = "output/output.mp4"
 FPS = 30.0
@@ -24,7 +23,6 @@ class VisualizationNode(Node):
         self.label_annotator = sv.LabelAnnotator()
 
         self.create_subscription(Context, "context", self.context_callback, 10)
-        self.create_subscription(Image, "image_raw", self.image_callback, 10)
 
         # Render in a fixed-rate loop instead of drawing from message callbacks.
         self.create_timer(1.0 / FPS, self.render_callback)
@@ -32,10 +30,7 @@ class VisualizationNode(Node):
     def context_callback(self, msg: Context):
         if msg is not None:
             self.latest_context = msg
-
-    def image_callback(self, msg: Image):
-        if msg is not None:
-            self.latest_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+            self.latest_image = self.bridge.imgmsg_to_cv2(msg.frame, desired_encoding="bgr8")
 
     def render_callback(self):
         if self.latest_image is None:

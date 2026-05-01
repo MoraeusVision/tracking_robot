@@ -183,6 +183,7 @@ class ContextPublisher(Node):
         out = Context()
         out.header.stamp = msg.header.stamp
         out.header.frame_id = msg.header.frame_id
+        out.frame = msg.frame
 
         out.persons = person_states
 

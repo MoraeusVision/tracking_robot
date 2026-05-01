@@ -45,6 +45,7 @@ class VisualizationNode(Node):
 
         if self.latest_context is not None:
             persons = self.latest_context.persons
+            hands = self.latest_context.hands
             if persons:
                 tracked_person = next((p for p in persons if p.tracked), None)
 
@@ -62,6 +63,24 @@ class VisualizationNode(Node):
                     class_ids = np.zeros(len(xyxy), dtype=int)
                     detections = sv.Detections(xyxy=xyxy, class_id=class_ids)
                     frame = self.box_annotator.annotate(frame, detections)
+
+            if hands:
+                HAND_CONNECTIONS = [
+                    (0, 1), (1, 2), (2, 3), (3, 4),
+                    (0, 5), (5, 6), (6, 7), (7, 8),
+                    (0, 9), (9, 10), (10, 11), (11, 12),
+                    (0, 13), (13, 14), (14, 15), (15, 16),
+                    (0, 17), (17, 18), (18, 19), (19, 20),
+                    (5, 9), (9, 13), (13, 17),
+                ]
+                h_img, w_img = frame.shape[:2]
+                for hand in hands:
+                    pts = [(int(lm.x * w_img), int(lm.y * h_img)) for lm in hand.landmarks]
+                    for a, b in HAND_CONNECTIONS:
+                        if a < len(pts) and b < len(pts):
+                            cv2.line(frame, pts[a], pts[b], (0, 255, 0), 1)
+                    for pt in pts:
+                        cv2.circle(frame, pt, 2, (0, 200, 255), -1)
 
         if self.video_writer is None:
             h, w = frame.shape[:2]

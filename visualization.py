@@ -21,6 +21,7 @@ class VisualizationNode(Node):
         self.output_path = output_path
         self.video_writer = None
         self.box_annotator = sv.BoxAnnotator()
+        self.label_annotator = sv.LabelAnnotator()
 
         self.create_subscription(Context, "context", self.context_callback, 10)
         self.create_subscription(Image, "image_raw", self.image_callback, 10)
@@ -45,10 +46,22 @@ class VisualizationNode(Node):
         if self.latest_context is not None:
             persons = self.latest_context.persons
             if persons:
-                xyxy = np.array([p.bbox_xyxy for p in persons], dtype=np.float32)
-                class_ids = np.zeros(len(xyxy), dtype=int)
-                detections = sv.Detections(xyxy=xyxy, class_id=class_ids)
-                frame = self.box_annotator.annotate(frame, detections)
+                tracked_person = next((p for p in persons if p.tracked), None)
+
+                # Only visualize the tracked person
+                if tracked_person is not None:
+                    xyxy = np.array([tracked_person.bbox_xyxy], dtype=np.float32)
+                    class_ids = np.array([0], dtype=int)
+                    labels = ["Tracked!"]
+
+                    detections = sv.Detections(xyxy=xyxy, class_id=class_ids)
+                    frame = self.box_annotator.annotate(frame, detections)
+                    frame = self.label_annotator.annotate(frame, detections, labels=labels)
+                else:     
+                    xyxy = np.array([p.bbox_xyxy for p in persons], dtype=np.float32)
+                    class_ids = np.zeros(len(xyxy), dtype=int)
+                    detections = sv.Detections(xyxy=xyxy, class_id=class_ids)
+                    frame = self.box_annotator.annotate(frame, detections)
 
         if self.video_writer is None:
             h, w = frame.shape[:2]

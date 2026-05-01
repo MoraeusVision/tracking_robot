@@ -116,5 +116,6 @@ class StateMachineNode(Node):
 
         out = RobotState()
         out.state_changed = True
+        out.tracked_id = self.sm.target_id if self.sm.target_id is not None else -1
 
         self.publisher.publish(out)

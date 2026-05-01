@@ -191,7 +191,14 @@ class ContextPublisher(Node):
         self.context_publisher.publish(out)
 
     def state_callback(self, msg):
-        print(msg)
         if msg.state_changed:
             for person in self.person_manager.people.values():
                 person.palm_held_time = 0.0
+
+        for person in self.person_manager.people.values():
+            person.tracked = False
+
+        if msg.tracked_id != -1:
+            person_to_track = self.person_manager.people.get(int(msg.tracked_id))
+            if person_to_track is not None:
+                person_to_track.tracked = True

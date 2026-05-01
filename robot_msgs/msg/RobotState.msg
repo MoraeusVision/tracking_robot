@@ -1,1 +1,2 @@
 bool state_changed
+int32 tracked_id

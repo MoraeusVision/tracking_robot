@@ -5,6 +5,7 @@ from frame_publisher import FramePublisher
 from prediction_publisher import PredictionPublisher
 from context_publisher import ContextPublisher
 from state_machine import StateMachineNode
+from visualization import VisualizationNode
 
 SOURCE = 0 #"examples/example1.mp4"
 OUTPUT_PATH = "output/output.mp4"
@@ -34,12 +35,14 @@ def main(args=None):
     prediction_publisher = PredictionPublisher(ENGINE_PATH, PT_PATH, MP_PATH)
     context_publisher = ContextPublisher()
     state_machine_node = StateMachineNode()
+    visualization_node = VisualizationNode(OUTPUT_PATH)
     
     executor = MultiThreadedExecutor()
     executor.add_node(image_publisher)
     executor.add_node(prediction_publisher)
     executor.add_node(context_publisher)
     executor.add_node(state_machine_node)
+    executor.add_node(visualization_node)
 
     try:
         executor.spin()
@@ -49,6 +52,7 @@ def main(args=None):
         executor.shutdown()
         prediction_publisher.destroy_node()
         image_publisher.destroy_node()
+        visualization_node.destroy_node()
         rclpy.shutdown()
 
 

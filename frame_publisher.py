@@ -12,6 +12,12 @@ class FramePublisher(Node):
         self.bridge = CvBridge()
         self.cap = cv2.VideoCapture(source)
 
+        self.frame_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.frame_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    def get_shape(self):
+        return self.frame_height, self.frame_width
+
     def time_callback(self):
         ret, frame = self.cap.read()
         if ret:

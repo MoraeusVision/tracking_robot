@@ -23,15 +23,15 @@ class ControllerNode(Node):
 
         # --- Steering / speed tuning ---
         self.center_deadband = 0.05
-        self.target_width_ratio = 0.20
+        self.target_width_ratio = 0.30
         self.width_deadband = 0.015
 
-        self.k_turn = 320.0
+        self.k_turn = 220.0
         self.k_forward = 900.0
 
-        self.max_turn_pwm = 140.0
+        self.max_turn_pwm = 90.0
         self.max_forward_pwm = 120.0
-        self.max_reverse_pwm = 60.0
+        self.max_reverse_pwm = 100.0
         self.allow_reverse = True
         self.min_move_pwm = 55.0
         self.slew_per_step = 20.0
@@ -109,8 +109,8 @@ class ControllerNode(Node):
         if abs(width_error) < self.width_deadband:
             width_error = 0.0
 
-        turn = self.k_turn * x_error
-        turn = max(-self.max_turn_pwm, min(self.max_turn_pwm, turn))
+        turn_ratio = self.k_turn * x_error / 255.0
+        turn_ratio = max(-1.0, min(1.0, turn_ratio))
 
         forward = self.k_forward * width_error
         if not self.allow_reverse:
@@ -120,8 +120,17 @@ class ControllerNode(Node):
         if 0.0 < abs(forward) < self.min_move_pwm:
             forward = self.min_move_pwm if forward > 0.0 else -self.min_move_pwm
 
-        left = forward - turn
-        right = forward + turn
+        # Blend mix: both motors always run in the same direction,
+        # turn_ratio scales how much one side yields to the other.
+        # Positive x_error = person to the right → robot turns right → left motor yields.
+        if turn_ratio >= 0.0:
+            left = forward * (1.0 - turn_ratio)
+            right = forward
+        else:
+            left = forward
+            right = forward * (1.0 + turn_ratio)
+
+        turn = turn_ratio * 255.0  # for debug only
 
         left = max(-255.0, min(255.0, left))
         right = max(-255.0, min(255.0, right))

@@ -16,6 +16,7 @@ class StateMachine():
     def __init__(self):
         self.state = State.SEARCH
         self.target_id: Optional[int] = None
+        self.target_bbox: list[float] = [0.0, 0.0, 0.0, 0.0]
 
         self.last_time: Optional[float] = None
 
@@ -58,6 +59,7 @@ class StateMachine():
             if score >= self.TRACK_THRESHOLD:
                 self.state = State.TRACK
                 self.target_id = person.id
+                self.target_bbox = [float(v) for v in person.bbox_xyxy]
                 print(f"Tracking ID{self.target_id}!")
                 return
 
@@ -76,7 +78,8 @@ class StateMachine():
             return
 
         self.lost_target_timer = 0.0
-        
+        self.target_bbox = list(target.bbox_xyxy)
+
         score = target.palm_held_seconds
 
         if score > self.TRACK_THRESHOLD:
@@ -87,6 +90,7 @@ class StateMachine():
     def _reset(self):
         self.state = State.SEARCH
         self.target_id = None
+        self.target_bbox = [0.0, 0.0, 0.0, 0.0]
 
 
 class StateMachineNode(Node):
@@ -111,11 +115,9 @@ class StateMachineNode(Node):
     def callback(self, msg: Context):
         changed = self.sm.update(msg)
 
-        if not changed:
-            return
-
         out = RobotState()
-        out.state_changed = True
+        out.state_changed = changed
         out.tracked_id = self.sm.target_id if self.sm.target_id is not None else -1
+        out.target_bbox = [float(v) for v in self.sm.target_bbox]
 
         self.publisher.publish(out)

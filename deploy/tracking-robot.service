@@ -1,0 +1,17 @@
+[Unit]
+Description=Tracking Robot Container
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/workspace
+ExecStartPre=/bin/mkdir -p /workspace/output
+ExecStartPre=-/usr/bin/docker rm -f tracking-robot
+ExecStart=/usr/bin/docker run -d --name tracking-robot --restart always --runtime nvidia --network host --ipc host --device /dev/video0:/dev/video0 --device /dev/ttyUSB0:/dev/ttyUSB0 -v /workspace/models:/workspace/models:ro -v /workspace/output:/workspace/output:rw tracking-robot:jetson /bin/bash -lc "source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && python main.py"
+ExecStop=/usr/bin/docker stop tracking-robot
+
+[Install]
+WantedBy=multi-user.target

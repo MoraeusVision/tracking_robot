@@ -58,7 +58,6 @@ def main(args=None):
         image_publisher.destroy_node()
         controller_node.destroy_node()
         visualization_node.destroy_node()
-        rclpy.shutdown()
 
 
 if __name__ == "__main__":

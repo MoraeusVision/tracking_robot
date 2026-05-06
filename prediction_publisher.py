@@ -1,4 +1,5 @@
 import os
+import time
 import mediapipe as mp
 import cv2
 from mediapipe.tasks import python
@@ -7,7 +8,7 @@ from ultralytics import YOLO
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
-from robot_msgs.msg import Prediction, Person, Hand, Landmark
+from robot_msgs.msg import Prediction, Person, Hand, Landmark, RobotState
 
 
 class PersonDetector:
@@ -131,6 +132,9 @@ class PredictionPublisher(Node):
         self.hand_detector = HandDetector(mp_path)
         self.bridge = CvBridge()
 
+        self._in_track = False
+        self._last_hand_time = 0.0
+
         self.subscription = self.create_subscription(
             Image,
             "image_raw",
@@ -138,17 +142,32 @@ class PredictionPublisher(Node):
             10,
         )
 
+        self.create_subscription(
+            RobotState,
+            "robot_state",
+            self._state_callback,
+            10,
+        )
+
         self.prediction_pub = self.create_publisher(Prediction, "predictions", 10)
+
+    def _state_callback(self, msg: RobotState):
+        self._in_track = msg.tracked_id >= 0
 
     def image_callback(self, msg):
         """Process an incoming frame and publish a Prediction ROS message."""
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
         person_results = self.person_detector.infer(frame)
-        hand_results = self.hand_detector.infer(frame)
-        
-        hands = self.hand_detector.parse_hands(hand_results, frame)
         persons = self.person_detector.parse_persons(person_results)
+
+        now = time.monotonic()
+        if not self._in_track or (now - self._last_hand_time) >= 1.0:
+            hand_results = self.hand_detector.infer(frame)
+            self._last_hand_time = now
+            hands = self.hand_detector.parse_hands(hand_results, frame)
+        else:
+            hands = []
 
         out = Prediction()
 

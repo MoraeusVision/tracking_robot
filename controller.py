@@ -127,10 +127,10 @@ class ControllerNode(Node):
         # --- Send ---
         self._send(left, right)
 
-        self.get_logger().info(
+        """self.get_logger().info(
             f"bbox=({x1:.1f},{y1:.1f},{x2:.1f},{y2:.1f}) "
             f"fwd={forward:.1f} steer={steering:.2f} L={left} R={right}"
-        )
+        )"""
 
     def _send(self, left, right):
         cmd = f"SET {left} {right}\n"

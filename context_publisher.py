@@ -28,8 +28,10 @@ class PersonManager:
         self.people: Dict[int, PersonState] = {}
 
         # scoring params
-        self.INCREASE_RATE = 1.0
-        self.DECAY_RATE = 0.5
+        self.SEARCH_INCREASE_RATE = 1.0
+        self.SEARCH_DECAY_RATE = 0.5
+        self.TRACK_INCREASE_RATE = 15.0
+        self.TRACK_DECAY_RATE = 0.5
         self.MAX_SCORE = 5.0
 
         self.last_time: Optional[float] = None
@@ -74,15 +76,22 @@ class PersonManager:
             if not person.visible:
                 continue
 
+            if person.tracked:
+                increase_rate = self.TRACK_INCREASE_RATE
+                decay_rate = self.TRACK_DECAY_RATE
+            else:
+                increase_rate = self.SEARCH_INCREASE_RATE
+                decay_rate = self.SEARCH_DECAY_RATE
+
             has_open_palm = any(
                 h.owner == person.id and h.gesture == GESTURE
                 for h in hands_msg
             )
 
             if has_open_palm:
-                person.palm_held_time += self.INCREASE_RATE * dt
+                person.palm_held_time += increase_rate * dt
             else:
-                person.palm_held_time -= self.DECAY_RATE * dt
+                person.palm_held_time -= decay_rate * dt
             
             person.palm_held_time = max(0.0, min(self.MAX_SCORE, person.palm_held_time))
             if person.palm_held_time > 0:

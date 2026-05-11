@@ -95,7 +95,7 @@ class StateMachine():
 
 class StateMachineNode(Node):
     def __init__(self):
-        super().__init__("robot_state")
+        super().__init__("robot_state_node")
 
         self.sm = StateMachine()
 

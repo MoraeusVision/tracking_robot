@@ -6,6 +6,7 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from ultralytics import YOLO
 from rclpy.node import Node
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from robot_msgs.msg import Prediction, Person, Hand, Landmark, RobotState
@@ -135,24 +136,31 @@ class PredictionPublisher(Node):
         self._in_track = False
         self._last_hand_time = 0.0
 
+        # Keep heavy image processing and robot state handling in separate
+        # callback groups so state updates are not starved.
+        self.image_cb_group = MutuallyExclusiveCallbackGroup()
+        self.state_cb_group = MutuallyExclusiveCallbackGroup()
+
         self.subscription = self.create_subscription(
             Image,
             "image_raw",
             self.image_callback,
             10,
+            callback_group=self.image_cb_group,
         )
 
-        self.create_subscription(
+        self.state_subscription = self.create_subscription(
             RobotState,
             "robot_state",
             self._state_callback,
             10,
+            callback_group=self.state_cb_group,
         )
 
         self.prediction_pub = self.create_publisher(Prediction, "predictions", 10)
 
     def _state_callback(self, msg: RobotState):
-        self._in_track = msg.tracked_id >= 0
+        self._in_track = msg.tracked_id != -1
 
     def image_callback(self, msg):
         """Process an incoming frame and publish a Prediction ROS message."""

@@ -23,7 +23,7 @@ class StateMachine():
         self.lost_target_timer = 0.0
         self.LOST_TIMEOUT = 3.0
 
-        self.INCREASE_RATE = 1.0
+        self.INCREASE_RATE = 3.0
         self.DECAY_RATE = 0.5
         self.TRACK_THRESHOLD = 3.0
         self.MAX_SCORE = 5.0

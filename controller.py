@@ -4,19 +4,12 @@ from rclpy.node import Node
 from robot_msgs.msg import RobotState
 
 # --- Tuning parameters ---
-KP = 0.1
+FORWARD_SPEED_PERCENT = 50  # Percent of MAX_SPEED
+KP = 18
 KI = 0.0
-KD = 0.02
-
-KP_FWD = 1.0
-TARGET_HEIGHT = 400
+KD = 0.0
 
 MAX_SPEED = 200
-MIN_SPEED = 20   # Deadzone
-
-MAX_FWD_ACCEL = 5     # PWM change per update (forward/back)
-MAX_STEER_ACCEL = 10  # steering smoothing
-
 SERIAL_PORT = "/dev/ttyUSB0"
 BAUD_RATE = 115200
 
@@ -50,10 +43,6 @@ class ControllerNode(Node):
 
         self._serial = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
 
-        # --- Smooth state ---
-        self._forward_current = 0.0
-        self._steering_current = 0.0
-
         self.create_subscription(
             RobotState,
             "robot_state",
@@ -61,77 +50,51 @@ class ControllerNode(Node):
             10
         )
 
+        self.publisher = self.create_publisher(
+            RobotState,
+            "robot_state",
+            10,
+        )
+
+        self.get_logger().info(
+            f"KP={KP}, KI={KI}, KD={KD}\n"
+            f"Forward speed: {FORWARD_SPEED_PERCENT}% of {MAX_SPEED}"
+        )
+
     def _on_robot_state(self, msg: RobotState):
         now = time.time()
         dt = now - self._last_time
         self._last_time = now
 
-        # --- No target → stop smoothly ---
+        # No target → stop
         if msg.tracked_id == -1:
             self._pid.reset()
-
-            # ramp down instead of instant stop
-            self._forward_current *= 0.8
-            self._steering_current *= 0.5
-
-            left = int(self._forward_current - self._steering_current)
-            right = int(self._forward_current + self._steering_current)
-
-            self._send(left, right)
+            self._send(0, 0)
             return
 
         x1, y1, x2, y2 = msg.target_bbox
-
         center_x = (x1 + x2) / 2.0
-        bbox_height = y2 - y1
 
-        # --- Steering (normalized) ---
+        # Steering (normalized error)
         error_x = (center_x - self._frame_width / 2) / (self._frame_width / 2)
+        print(f"Error_x: {error_x}")
+        steering = self._pid.update(error_x, dt)
+        print(f"Steering: {steering}")
 
-        raw_steering = self._pid.update(error_x, dt)
+        # Forward speed (constant, as percent of MAX_SPEED)
+        forward = (FORWARD_SPEED_PERCENT / 100.0) * MAX_SPEED
 
-        # --- Steering smoothing (acceleration limit) ---
-        delta_steer = raw_steering - self._steering_current
-        delta_steer = max(-MAX_STEER_ACCEL, min(MAX_STEER_ACCEL, delta_steer))
-        self._steering_current += delta_steer
-
-        steering = self._steering_current
-
-        # --- Forward control ---
-        target_forward = KP_FWD * (TARGET_HEIGHT - bbox_height)
-
-        # allow limited reverse
-        target_forward = max(-60, min(MAX_SPEED, target_forward))
-
-        # --- Forward smoothing (acceleration limit) ---
-        delta_fwd = target_forward - self._forward_current
-        delta_fwd = max(-MAX_FWD_ACCEL, min(MAX_FWD_ACCEL, delta_fwd))
-        self._forward_current += delta_fwd
-
-        forward = self._forward_current
-
-        # --- Combine ---
+        # Combine
         left = forward - steering
         right = forward + steering
 
-        # --- Clamp ---
+        # Clamp
         left = max(-MAX_SPEED, min(MAX_SPEED, int(left)))
         right = max(-MAX_SPEED, min(MAX_SPEED, int(right)))
 
-        # --- Deadzone ---
-        if abs(left) < MIN_SPEED:
-            left = 0
-        if abs(right) < MIN_SPEED:
-            right = 0
-
-        # --- Send ---
         self._send(left, right)
-
-        """self.get_logger().info(
-            f"bbox=({x1:.1f},{y1:.1f},{x2:.1f},{y2:.1f}) "
-            f"fwd={forward:.1f} steer={steering:.2f} L={left} R={right}"
-        )"""
 
     def _send(self, left, right):
         cmd = f"SET {left} {right}\n"
+        print(cmd)
         self._serial.write(cmd.encode())

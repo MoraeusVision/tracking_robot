@@ -2,12 +2,7 @@ import time
 import serial
 from rclpy.node import Node
 from robot_msgs.msg import RobotState
-
-# --- Tuning parameters ---
-FORWARD_SPEED_PERCENT = 50  # Percent of MAX_SPEED
-KP = 18
-KI = 0.0
-KD = 0.0
+from runtime_config import RuntimeTuningStore
 
 MAX_SPEED = 200
 SERIAL_PORT = "/dev/ttyUSB0"
@@ -32,13 +27,22 @@ class PID:
         self._integral = 0.0
         self._prev_error = 0.0
 
+    def set_gains(self, kp, ki, kd):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+
 
 class ControllerNode(Node):
-    def __init__(self, frame_width):
+    def __init__(self, frame_width, tuning_store: RuntimeTuningStore):
         super().__init__("controller")
 
         self._frame_width = frame_width
-        self._pid = PID(KP, KI, KD)
+        self._tuning_store = tuning_store
+        tuning, version = self._tuning_store.snapshot()
+        self._pid = PID(tuning.kp, tuning.ki, tuning.kd)
+        self._forward_speed_percent = tuning.forward_speed_percent
+        self._applied_version = version
         self._last_time = time.time()
 
         self._serial = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
@@ -56,15 +60,39 @@ class ControllerNode(Node):
             10,
         )
 
+        self._log_tuning(tuning)
+
+    def _log_tuning(self, tuning):
         self.get_logger().info(
-            f"KP={KP}, KI={KI}, KD={KD}\n"
-            f"Forward speed: {FORWARD_SPEED_PERCENT}% of {MAX_SPEED}"
+            f"KP={tuning.kp}, KI={tuning.ki}, KD={tuning.kd}\n"
+            f"Forward speed: {tuning.forward_speed_percent}% of {MAX_SPEED}"
         )
+
+    def _apply_tuning(self):
+        tuning, version = self._tuning_store.snapshot()
+        if version == self._applied_version:
+            return
+
+        gains_changed = (
+            tuning.kp != self._pid.kp
+            or tuning.ki != self._pid.ki
+            or tuning.kd != self._pid.kd
+        )
+
+        if gains_changed:
+            self._pid.set_gains(tuning.kp, tuning.ki, tuning.kd)
+            self._pid.reset()
+            self._log_tuning(tuning)
+
+        self._forward_speed_percent = tuning.forward_speed_percent
+        self._applied_version = version
 
     def _on_robot_state(self, msg: RobotState):
         now = time.time()
         dt = now - self._last_time
         self._last_time = now
+
+        self._apply_tuning()
 
         # No target → stop
         if msg.tracked_id == -1:
@@ -82,7 +110,7 @@ class ControllerNode(Node):
         print(f"Steering: {steering}")
 
         # Forward speed (constant, as percent of MAX_SPEED)
-        forward = (FORWARD_SPEED_PERCENT / 100.0) * MAX_SPEED
+        forward = (self._forward_speed_percent / 100.0) * MAX_SPEED
 
         # Combine
         left = forward - steering

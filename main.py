@@ -61,7 +61,7 @@ def main(args=None):
     state_machine_node = StateMachineNode()
     _, frame_width = image_publisher.get_shape()
     controller_node = ControllerNode(frame_width, tuning_store)
-    visualization_node = VisualizationNode(parsed_args.output_path)
+    visualization_node = VisualizationNode(parsed_args.output_path, tuning_store)
     
     executor = MultiThreadedExecutor()
     executor.add_node(image_publisher)

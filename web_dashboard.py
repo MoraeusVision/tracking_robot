@@ -181,6 +181,13 @@ HTML_PAGE = """<!DOCTYPE html>
         <div class="value-row"><strong>Forward speed %</strong><span id="speed-value">-</span></div>
       </div>
 
+      <div class="card full">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+          <strong>Video Recording</strong>
+          <button type="button" id="recording-toggle" class="secondary" style="min-width: auto; padding: 10px 16px;">-</button>
+        </div>
+      </div>
+
       <form id="tuning-form" class="grid">
         <label>
           KP
@@ -292,9 +299,42 @@ HTML_PAGE = """<!DOCTYPE html>
       }
     });
 
+    const recordingToggleBtn = document.getElementById('recording-toggle');
+    let recordingState = false;
+
+    async function updateRecordingButton() {
+      try {
+        const response = await fetch('/api/recording/status');
+        const data = await response.json();
+        recordingState = data.recording_enabled;
+        recordingToggleBtn.textContent = recordingState ? 'Recording: ON' : 'Recording: OFF';
+        recordingToggleBtn.style.background = recordingState ? 'linear-gradient(135deg, #ff7a90, #ff5a7a)' : 'rgba(255, 255, 255, 0.08)';
+      } catch (error) {
+        console.error('Failed to fetch recording status:', error);
+      }
+    }
+
+    recordingToggleBtn.addEventListener('click', async () => {
+      try {
+        const response = await fetch('/api/recording/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: !recordingState }),
+        });
+        const data = await response.json();
+        recordingState = data.recording_enabled;
+        recordingToggleBtn.textContent = recordingState ? 'Recording: ON' : 'Recording: OFF';
+        recordingToggleBtn.style.background = recordingState ? 'linear-gradient(135deg, #ff7a90, #ff5a7a)' : 'rgba(255, 255, 255, 0.08)';
+      } catch (error) {
+        console.error('Failed to toggle recording:', error);
+      }
+    });
+
     loadValues().catch((error) => {
       setStatus(`Kunde inte hämta initiala värden: ${error.message}`, true);
     });
+
+    updateRecordingButton();
   </script>
 </body>
 </html>
@@ -322,10 +362,29 @@ class TuningRequestHandler(BaseHTTPRequestHandler):
             self._send_json({**tuning.as_dict(), "version": version})
             return
 
+        if path == "/api/recording/status":
+            recording_enabled = self.server.tuning_store.get_recording_enabled()
+            self._send_json({"recording_enabled": recording_enabled})
+            return
+
         self.send_error(HTTPStatus.NOT_FOUND, "Not found")
 
     def do_POST(self):
         path = urlparse(self.path).path
+        
+        if path == "/api/recording/toggle":
+            try:
+                content_length = int(self.headers.get("Content-Length", "0"))
+                raw_body = self.rfile.read(content_length).decode("utf-8") if content_length else "{}"
+                data = json.loads(raw_body)
+                enabled = data.get("enabled", False)
+                self.server.tuning_store.set_recording_enabled(enabled)
+                recording_enabled = self.server.tuning_store.get_recording_enabled()
+                self._send_json({"recording_enabled": recording_enabled, "status": "ok"})
+            except json.JSONDecodeError:
+                self._send_json({"error": "Invalid JSON payload"}, status=HTTPStatus.BAD_REQUEST)
+            return
+        
         if path != "/api/tuning":
             self.send_error(HTTPStatus.NOT_FOUND, "Not found")
             return

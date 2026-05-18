@@ -5,10 +5,11 @@ from threading import Lock
 
 @dataclass(frozen=True)
 class RuntimeTuning:
-    kp: float = 18.0
+    kp: float = 5.0
     ki: float = 0.0
     kd: float = 0.0
-    forward_speed_percent: float = 50.0
+    forward_speed_percent: float = 40.0
+    recording_enabled: bool = False
 
     def as_dict(self):
         return asdict(self)
@@ -23,6 +24,23 @@ class RuntimeTuningStore:
     def snapshot(self) -> tuple[RuntimeTuning, int]:
         with self._lock:
             return self._state, self._version
+
+    def get_recording_enabled(self) -> bool:
+        with self._lock:
+            return self._state.recording_enabled
+
+    def set_recording_enabled(self, enabled: bool):
+        with self._lock:
+            if self._state.recording_enabled != enabled:
+                self._state = RuntimeTuning(
+                    kp=self._state.kp,
+                    ki=self._state.ki,
+                    kd=self._state.kd,
+                    forward_speed_percent=self._state.forward_speed_percent,
+                    recording_enabled=enabled,
+                )
+                self._version += 1
+            return self._state.recording_enabled
 
     def update(self, *, kp=None, ki=None, kd=None, forward_speed_percent=None):
         with self._lock:

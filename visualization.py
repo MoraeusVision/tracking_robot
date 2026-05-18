@@ -11,7 +11,7 @@ FPS = 30.0
 
 
 class VisualizationNode(Node):
-    def __init__(self, output_path: str = OUTPUT_PATH):
+    def __init__(self, output_path: str = OUTPUT_PATH, tuning_store=None):
         super().__init__("visualization")
 
         self.bridge = CvBridge()
@@ -21,6 +21,7 @@ class VisualizationNode(Node):
         self.video_writer = None
         self.box_annotator = sv.BoxAnnotator()
         self.label_annotator = sv.LabelAnnotator()
+        self.tuning_store = tuning_store
 
         self.create_subscription(Context, "context", self.context_callback, 10)
 
@@ -77,13 +78,21 @@ class VisualizationNode(Node):
                     for pt in pts:
                         cv2.circle(frame, pt, 2, (0, 200, 255), -1)
 
-        if self.video_writer is None:
-            h, w = frame.shape[:2]
-            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            self.video_writer = cv2.VideoWriter(self.output_path, fourcc, FPS, (w, h))
-            self.get_logger().info(f"Saving video to {self.output_path}")
+        # Check if recording is enabled before writing
+        recording_enabled = self.tuning_store.get_recording_enabled() if self.tuning_store else False
 
-        self.video_writer.write(frame)
+        if recording_enabled:
+            if self.video_writer is None:
+                h, w = frame.shape[:2]
+                fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                self.video_writer = cv2.VideoWriter(self.output_path, fourcc, FPS, (w, h))
+                self.get_logger().info(f"Saving video to {self.output_path}")
+            self.video_writer.write(frame)
+        else:
+            if self.video_writer is not None:
+                self.video_writer.release()
+                self.video_writer = None
+                self.get_logger().info(f"Recording stopped, video saved to {self.output_path}")
 
     def destroy_node(self):
         if self.video_writer is not None:
